@@ -1,7 +1,78 @@
+import 'package:clipboard/clipboard.dart';
 import 'package:flutter/material.dart';
 
-class HomeScreen extends StatelessWidget {
+import '../../services/url_detector.dart';
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final TextEditingController _urlController =
+  TextEditingController();
+
+  String? _detectedPlatform;
+
+  @override
+  void dispose() {
+    _urlController.dispose();
+    super.dispose();
+  }
+
+  void _detectUrl(String value) {
+    final platform = UrlDetector.detectPlatform(value);
+
+    setState(() {
+      _detectedPlatform = platform;
+    });
+  }
+
+  Future<void> _pasteLink() async {
+    final text = await FlutterClipboard.paste();
+
+    if (text.trim().isEmpty) {
+      _showMessage('Clipboard is empty.');
+      return;
+    }
+
+    _urlController.text = text.trim();
+
+    _detectUrl(text);
+
+    if (UrlDetector.detectPlatform(text) == null) {
+      _showMessage('Unsupported or invalid video link.');
+    }
+  }
+
+  void _downloadPressed() {
+    if (_urlController.text.trim().isEmpty) {
+      _showMessage('Please paste a video link first.');
+      return;
+    }
+
+    if (_detectedPlatform == null) {
+      _showMessage('This platform is not supported.');
+      return;
+    }
+
+    _showMessage(
+      '$_detectedPlatform link detected. Download system will be added next.',
+    );
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +106,8 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
                   const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment:
+                    CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Video Downloader',
@@ -59,7 +131,6 @@ class HomeScreen extends StatelessWidget {
 
               const SizedBox(height: 35),
 
-              // Welcome
               const Text(
                 'Download Videos & Audio',
                 style: TextStyle(
@@ -90,7 +161,9 @@ class HomeScreen extends StatelessWidget {
                   color: const Color(0xFF151B2D),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: Colors.white10,
+                    color: _detectedPlatform != null
+                        ? const Color(0xFF635BFF)
+                        : Colors.white10,
                   ),
                 ),
                 child: Row(
@@ -100,10 +173,17 @@ class HomeScreen extends StatelessWidget {
                       color: Color(0xFF8B7FFF),
                     ),
                     const SizedBox(width: 12),
-                    const Expanded(
+
+                    Expanded(
                       child: TextField(
-                        decoration: InputDecoration(
-                          hintText: 'Paste video link here...',
+                        controller: _urlController,
+                        onChanged: _detectUrl,
+                        keyboardType:
+                        TextInputType.url,
+                        decoration:
+                        const InputDecoration(
+                          hintText:
+                          'Paste video link here...',
                           hintStyle: TextStyle(
                             color: Colors.white38,
                             fontSize: 14,
@@ -112,8 +192,9 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
                     ),
+
                     TextButton.icon(
-                      onPressed: () {},
+                      onPressed: _pasteLink,
                       icon: const Icon(
                         Icons.content_paste_rounded,
                         size: 18,
@@ -124,6 +205,39 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
 
+              const SizedBox(height: 12),
+
+              // Detected Platform
+              if (_detectedPlatform != null)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF151B2D),
+                    borderRadius:
+                    BorderRadius.circular(14),
+                    border: Border.all(
+                      color: Colors.green.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        color: Colors.greenAccent,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        '$_detectedPlatform link detected',
+                        style: const TextStyle(
+                          color: Colors.greenAccent,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
               const SizedBox(height: 16),
 
               // Download Button
@@ -131,8 +245,10 @@ class HomeScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.download_rounded),
+                  onPressed: _downloadPressed,
+                  icon: const Icon(
+                    Icons.download_rounded,
+                  ),
                   label: const Text(
                     'Download',
                     style: TextStyle(
@@ -141,10 +257,12 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF635BFF),
+                    backgroundColor:
+                    const Color(0xFF635BFF),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
+                      borderRadius:
+                      BorderRadius.circular(15),
                     ),
                   ),
                 ),
@@ -152,7 +270,6 @@ class HomeScreen extends StatelessWidget {
 
               const SizedBox(height: 35),
 
-              // Supported Platforms
               const Text(
                 'Supported Platforms',
                 style: TextStyle(
@@ -166,7 +283,8 @@ class HomeScreen extends StatelessWidget {
               GridView.count(
                 crossAxisCount: 3,
                 shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
+                physics:
+                const NeverScrollableScrollPhysics(),
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
                 childAspectRatio: 1.15,
@@ -184,15 +302,18 @@ class HomeScreen extends StatelessWidget {
                     name: 'TikTok',
                   ),
                   PlatformCard(
-                    icon: Icons.chat_bubble_outline_rounded,
+                    icon:
+                    Icons.chat_bubble_outline_rounded,
                     name: 'Snapchat',
                   ),
                   PlatformCard(
-                    icon: Icons.favorite_border_rounded,
+                    icon:
+                    Icons.favorite_border_rounded,
                     name: 'Likee',
                   ),
                   PlatformCard(
-                    icon: Icons.play_circle_outline_rounded,
+                    icon:
+                    Icons.play_circle_outline_rounded,
                     name: 'YouTube',
                   ),
                 ],
@@ -200,13 +321,13 @@ class HomeScreen extends StatelessWidget {
 
               const SizedBox(height: 30),
 
-              // Info Card
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   color: const Color(0xFF151B2D),
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius:
+                  BorderRadius.circular(18),
                 ),
                 child: const Row(
                   children: [
@@ -233,24 +354,26 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
 
-      // Bottom Navigation
       bottomNavigationBar: NavigationBar(
         backgroundColor: const Color(0xFF0F1526),
         selectedIndex: 0,
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
+            selectedIcon:
+            Icon(Icons.home_rounded),
             label: 'Home',
           ),
           NavigationDestination(
             icon: Icon(Icons.download_outlined),
-            selectedIcon: Icon(Icons.download_rounded),
+            selectedIcon:
+            Icon(Icons.download_rounded),
             label: 'Downloads',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings_rounded),
+            selectedIcon:
+            Icon(Icons.settings_rounded),
             label: 'Settings',
           ),
         ],
@@ -280,7 +403,8 @@ class PlatformCard extends StatelessWidget {
         ),
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment:
+        MainAxisAlignment.center,
         children: [
           Icon(
             icon,
