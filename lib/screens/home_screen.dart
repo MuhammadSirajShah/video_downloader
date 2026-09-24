@@ -1,5 +1,6 @@
 import 'package:clipboard/clipboard.dart';
 import 'package:flutter/material.dart';
+import 'package:video_downloader/screens/video_options/video_options_screen.dart';
 
 import '../../services/url_detector.dart';
 
@@ -49,17 +50,27 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _downloadPressed() {
     if (_urlController.text.trim().isEmpty) {
-      _showMessage('Please paste a video link first.');
+      _showMessage(
+        'Please paste a video link first.',
+      );
       return;
     }
 
     if (_detectedPlatform == null) {
-      _showMessage('This platform is not supported.');
+      _showMessage(
+        'This platform is not supported.',
+      );
       return;
     }
 
-    _showMessage(
-      '$_detectedPlatform link detected. Download system will be added next.',
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => VideoOptionsScreen(
+          platform: _detectedPlatform!,
+          videoUrl: _urlController.text.trim(),
+        ),
+      ),
     );
   }
 
