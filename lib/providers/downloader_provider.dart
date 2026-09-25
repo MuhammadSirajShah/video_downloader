@@ -11,6 +11,8 @@ class DownloadItem {
   final String? quality;
   final DateTime createdAt;
   final String status;
+  final String? filePath;
+  final double progress;
 
   DownloadItem({
     required this.id,
@@ -20,6 +22,8 @@ class DownloadItem {
     required this.quality,
     required this.createdAt,
     required this.status,
+    this.filePath,
+    this.progress = 0.0,
   });
 
   Map<String, dynamic> toJson() {
@@ -31,6 +35,8 @@ class DownloadItem {
       'quality': quality,
       'createdAt': createdAt.toIso8601String(),
       'status': status,
+      'filePath': filePath,
+      'progress': progress,
     };
   }
 
@@ -43,11 +49,15 @@ class DownloadItem {
       url: json['url'] ?? '',
       format: json['format'] ?? '',
       quality: json['quality'],
-      createdAt: DateTime.tryParse(
+      createdAt:
+      DateTime.tryParse(
         json['createdAt'] ?? '',
       ) ??
           DateTime.now(),
       status: json['status'] ?? 'Preparing',
+      filePath: json['filePath'],
+      progress:
+      (json['progress'] ?? 0.0).toDouble(),
     );
   }
 }
@@ -135,6 +145,35 @@ class DownloaderProvider extends ChangeNotifier {
     await _saveDownloads();
   }
 
+  Future<void> updateProgress(
+      String id,
+      double progress,
+      ) async {
+    final index = _downloads.indexWhere(
+          (item) => item.id == id,
+    );
+
+    if (index == -1) return;
+
+    final oldItem = _downloads[index];
+
+    _downloads[index] = DownloadItem(
+      id: oldItem.id,
+      platform: oldItem.platform,
+      url: oldItem.url,
+      format: oldItem.format,
+      quality: oldItem.quality,
+      createdAt: oldItem.createdAt,
+      status: oldItem.status,
+      filePath: oldItem.filePath,
+      progress: progress.clamp(0.0, 1.0),
+    );
+
+    notifyListeners();
+
+    await _saveDownloads();
+  }
+
   Future<void> updateStatus(
       String id,
       String status,
@@ -155,6 +194,8 @@ class DownloaderProvider extends ChangeNotifier {
       quality: oldItem.quality,
       createdAt: oldItem.createdAt,
       status: status,
+      filePath: oldItem.filePath,
+      progress: oldItem.progress,
     );
 
     notifyListeners();
@@ -162,7 +203,38 @@ class DownloaderProvider extends ChangeNotifier {
     await _saveDownloads();
   }
 
-  Future<void> removeDownload(String id) async {
+  Future<void> updateFilePath(
+      String id,
+      String filePath,
+      ) async {
+    final index = _downloads.indexWhere(
+          (item) => item.id == id,
+    );
+
+    if (index == -1) return;
+
+    final oldItem = _downloads[index];
+
+    _downloads[index] = DownloadItem(
+      id: oldItem.id,
+      platform: oldItem.platform,
+      url: oldItem.url,
+      format: oldItem.format,
+      quality: oldItem.quality,
+      createdAt: oldItem.createdAt,
+      status: oldItem.status,
+      filePath: filePath,
+      progress: oldItem.progress,
+    );
+
+    notifyListeners();
+
+    await _saveDownloads();
+  }
+
+  Future<void> removeDownload(
+      String id,
+      ) async {
     _downloads.removeWhere(
           (item) => item.id == id,
     );

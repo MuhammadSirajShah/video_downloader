@@ -28,8 +28,7 @@ class DownloadsScreen extends StatelessWidget {
               child: Padding(
                 padding: EdgeInsets.all(30),
                 child: Column(
-                  mainAxisAlignment:
-                  MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
                       Icons.download_for_offline_outlined,
@@ -46,7 +45,7 @@ class DownloadsScreen extends StatelessWidget {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      'Your download history will appear here.',
+                      'Your downloaded files will appear here.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white54,
@@ -67,6 +66,15 @@ class DownloadsScreen extends StatelessWidget {
             itemBuilder: (context, index) {
               final item = downloads[index];
 
+              final bool isCompleted =
+                  item.status == 'Completed';
+
+              final bool isDownloading =
+                  item.status == 'Downloading';
+
+              final bool isFailed =
+                  item.status == 'Failed';
+
               return Dismissible(
                 key: ValueKey(item.id),
                 direction: DismissDirection.endToStart,
@@ -84,8 +92,12 @@ class DownloadsScreen extends StatelessWidget {
                     color: Colors.white,
                   ),
                 ),
-                onDismissed: (_) {
-                  provider.removeDownload(item.id);
+                onDismissed: (_) async {
+                  await provider.removeDownload(
+                    item.id,
+                  );
+
+                  if (!context.mounted) return;
 
                   ScaffoldMessenger.of(context)
                       .showSnackBar(
@@ -108,80 +120,158 @@ class DownloadsScreen extends StatelessWidget {
                       color: Colors.white10,
                     ),
                   ),
-                  child: Row(
+                  child: Column(
                     children: [
-                      Container(
-                        height: 52,
-                        width: 52,
-                        decoration: BoxDecoration(
-                          color:
-                          const Color(0xFF635BFF)
-                              .withOpacity(0.15),
-                          borderRadius:
-                          BorderRadius.circular(14),
-                        ),
-                        child: Icon(
-                          item.format == 'MP4'
-                              ? Icons
-                              .video_file_rounded
-                              : Icons
-                              .audio_file_rounded,
-                          color:
-                          const Color(0xFF8B7FFF),
-                          size: 28,
-                        ),
-                      ),
-
-                      const SizedBox(width: 14),
-
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment:
-                          CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.platform,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight:
-                                FontWeight.bold,
-                              ),
+                      Row(
+                        children: [
+                          Container(
+                            height: 52,
+                            width: 52,
+                            decoration: BoxDecoration(
+                              color:
+                              const Color(0xFF635BFF)
+                                  .withOpacity(0.15),
+                              borderRadius:
+                              BorderRadius.circular(14),
                             ),
-
-                            const SizedBox(height: 5),
-
-                            Text(
+                            child: Icon(
                               item.format == 'MP4'
-                                  ? '${item.format} • ${item.quality}'
-                                  : item.format,
-                              style: const TextStyle(
-                                color: Colors.white60,
-                                fontSize: 13,
-                              ),
+                                  ? Icons
+                                  .video_file_rounded
+                                  : Icons
+                                  .audio_file_rounded,
+                              color:
+                              const Color(0xFF8B7FFF),
+                              size: 28,
                             ),
+                          ),
 
-                            const SizedBox(height: 5),
+                          const SizedBox(width: 14),
 
-                            Text(
-                              item.status,
-                              style: TextStyle(
-                                color: item.status ==
-                                    'Completed'
-                                    ? Colors.greenAccent
-                                    : Colors.orangeAccent,
-                                fontSize: 12,
-                                fontWeight:
-                                FontWeight.w600,
-                              ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment:
+                              CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.platform,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight:
+                                    FontWeight.bold,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 5),
+
+                                Text(
+                                  item.format == 'MP4'
+                                      ? '${item.format} • ${item.quality ?? ''}'
+                                      : item.format,
+                                  style: const TextStyle(
+                                    color: Colors.white60,
+                                    fontSize: 13,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 5),
+
+                                Row(
+                                  children: [
+                                    Icon(
+                                      isCompleted
+                                          ? Icons
+                                          .check_circle_rounded
+                                          : isFailed
+                                          ? Icons
+                                          .error_rounded
+                                          : isDownloading
+                                          ? Icons
+                                          .downloading_rounded
+                                          : Icons
+                                          .hourglass_top_rounded,
+                                      size: 15,
+                                      color: isCompleted
+                                          ? Colors.greenAccent
+                                          : isFailed
+                                          ? Colors.redAccent
+                                          : Colors
+                                          .orangeAccent,
+                                    ),
+
+                                    const SizedBox(width: 5),
+
+                                    Text(
+                                      item.status,
+                                      style: TextStyle(
+                                        color: isCompleted
+                                            ? Colors
+                                            .greenAccent
+                                            : isFailed
+                                            ? Colors
+                                            .redAccent
+                                            : Colors
+                                            .orangeAccent,
+                                        fontSize: 12,
+                                        fontWeight:
+                                        FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
+
+                          if (isCompleted)
+                            const Icon(
+                              Icons.check_circle,
+                              color: Colors.greenAccent,
+                            ),
+                        ],
+                      ),
+
+                      if (isDownloading) ...[
+                        const SizedBox(height: 14),
+
+                        LinearProgressIndicator(
+                          value: item.progress,
+                          minHeight: 5,
+                          borderRadius:
+                          BorderRadius.circular(10),
                         ),
-                      ),
 
-                      const Icon(
-                        Icons.chevron_right_rounded,
-                        color: Colors.white38,
-                      ),
+                        const SizedBox(height: 6),
+
+                        Align(
+                          alignment:
+                          Alignment.centerRight,
+                          child: Text(
+                            '${(item.progress * 100).toStringAsFixed(0)}%',
+                            style: const TextStyle(
+                              color: Colors.white54,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+
+                      if (isCompleted &&
+                          item.filePath != null) ...[
+                        const SizedBox(height: 10),
+
+                        Align(
+                          alignment:
+                          Alignment.centerLeft,
+                          child: Text(
+                            'Saved successfully',
+                            style: const TextStyle(
+                              color: Colors.greenAccent,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

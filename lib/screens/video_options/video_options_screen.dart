@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../../models/video_model.dart';
 import '../../providers/downloader_provider.dart';
 import '../../services/api_service.dart';
+import '../../services/downloader_service.dart';
 
 class VideoOptionsScreen extends StatefulWidget {
   final String platform;
@@ -19,12 +20,15 @@ class VideoOptionsScreen extends StatefulWidget {
   });
 
   @override
-  State<VideoOptionsScreen> createState() => _VideoOptionsScreenState();
+  State<VideoOptionsScreen> createState() =>
+      _VideoOptionsScreenState();
 }
 
-class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
-
+class _VideoOptionsScreenState
+    extends State<VideoOptionsScreen> {
   final ApiService _apiService = ApiService();
+  final DownloaderService _downloaderService =
+  DownloaderService();
 
   bool _isDownloading = false;
 
@@ -66,7 +70,8 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
       _isDownloading = true;
     });
 
-    final result = await _apiService.createDownloadJob(
+    final result =
+    await _apiService.createDownloadJob(
       url: widget.videoUrl,
       format: _selectedFormat,
       quality: _selectedFormat == 'MP4'
@@ -76,46 +81,125 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
 
     if (!mounted) return;
 
-    setState(() {
-      _isDownloading = false;
-    });
+    if (result['success'] != true) {
+      setState(() {
+        _isDownloading = false;
+      });
 
-    if (result['success'] == true) {
-      final id = const Uuid().v4();
-
-      await context.read<DownloaderProvider>().addDownload(
-        id: id,
-        platform: widget.platform,
-        url: widget.videoUrl,
-        format: _selectedFormat,
-        quality: _selectedFormat == 'MP4'
-            ? _selectedQuality
-            : null,
+      _showMessage(
+        result['message'] ??
+            'Download could not be started.',
       );
 
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Download added successfully.',
-            ),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-    } else {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(
-              result['message'] ??
-                  'Download could not be started.',
-            ),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+      return;
     }
+
+    final downloadUrl =
+    result['downloadUrl'];
+
+    if (downloadUrl == null ||
+        downloadUrl.toString().isEmpty) {
+      setState(() {
+        _isDownloading = false;
+      });
+
+      _showMessage(
+        'No downloadable file was returned by the server.',
+      );
+
+      return;
+    }
+
+    final id = const Uuid().v4();
+
+    final provider =
+    context.read<DownloaderProvider>();
+
+    await provider.addDownload(
+      id: id,
+      platform: widget.platform,
+      url: widget.videoUrl,
+      format: _selectedFormat,
+      quality: _selectedFormat == 'MP4'
+          ? _selectedQuality
+          : null,
+    );
+
+    await provider.updateStatus(
+      id,
+      'Downloading',
+    );
+
+    try {
+      final extension =
+      _selectedFormat.toLowerCase();
+
+      final fileName =
+          '${widget.platform}_${DateTime.now().millisecondsSinceEpoch}.$extension';
+
+      final filePath =
+      await _downloaderService.downloadFile(
+        downloadUrl: downloadUrl.toString(),
+        fileName: fileName,
+        onProgress: (progress) {
+          provider.updateProgress(
+            id,
+            progress,
+          );
+        },
+      );
+
+      await provider.updateFilePath(
+        id,
+        filePath,
+      );
+
+      await provider.updateProgress(
+        id,
+        1.0,
+      );
+
+      await provider.updateStatus(
+        id,
+        'Completed',
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _isDownloading = false;
+      });
+
+      _showMessage(
+        'Download completed successfully.',
+      );
+    } catch (e) {
+      await provider.updateStatus(
+        id,
+        'Failed',
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _isDownloading = false;
+      });
+
+      _showMessage(
+        'Download failed. Please try again.',
+      );
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
   }
 
   @override
@@ -130,7 +214,8 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: const Color(0xFF0B1020),
+        backgroundColor:
+        const Color(0xFF0B1020),
         foregroundColor: Colors.white,
       ),
       body: SafeArea(
@@ -145,7 +230,8 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
                 width: double.infinity,
                 height: 210,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF151B2D),
+                  color:
+                  const Color(0xFF151B2D),
                   borderRadius:
                   BorderRadius.circular(20),
                 ),
@@ -211,7 +297,8 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
               Text(
                 widget.videoUrl,
                 maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                overflow:
+                TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: Colors.white38,
                   fontSize: 12,
@@ -232,15 +319,22 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
               const SizedBox(height: 12),
 
               Row(
-                children: _formats.map((format) {
+                children:
+                _formats.map((format) {
                   final selected =
-                      _selectedFormat == format;
+                      _selectedFormat ==
+                          format;
 
                   return Expanded(
                     child: GestureDetector(
                       onTap: () {
+                        if (_isDownloading) {
+                          return;
+                        }
+
                         setState(() {
-                          _selectedFormat = format;
+                          _selectedFormat =
+                              format;
 
                           if (format == 'MP4' &&
                               qualities.isNotEmpty) {
@@ -259,10 +353,12 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
                           right: 10,
                         ),
                         padding:
-                        const EdgeInsets.symmetric(
+                        const EdgeInsets
+                            .symmetric(
                           vertical: 16,
                         ),
-                        decoration: BoxDecoration(
+                        decoration:
+                        BoxDecoration(
                           color: selected
                               ? const Color(
                             0xFF635BFF,
@@ -271,7 +367,9 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
                             0xFF151B2D,
                           ),
                           borderRadius:
-                          BorderRadius.circular(14),
+                          BorderRadius.circular(
+                            14,
+                          ),
                           border: Border.all(
                             color: selected
                                 ? const Color(
@@ -291,10 +389,13 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
                               color: Colors.white,
                               size: 28,
                             ),
-                            const SizedBox(height: 7),
+                            const SizedBox(
+                              height: 7,
+                            ),
                             Text(
                               format,
-                              style: const TextStyle(
+                              style:
+                              const TextStyle(
                                 fontWeight:
                                 FontWeight.bold,
                               ),
@@ -307,7 +408,7 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
                 }).toList(),
               ),
 
-              // Quality only for MP4
+              // Quality
               if (_selectedFormat == 'MP4') ...[
                 const SizedBox(height: 28),
 
@@ -315,7 +416,8 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
                   'Video Quality',
                   style: TextStyle(
                     fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontWeight:
+                    FontWeight.bold,
                   ),
                 ),
 
@@ -327,10 +429,15 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
                   children:
                   qualities.map((quality) {
                     final selected =
-                        _selectedQuality == quality;
+                        _selectedQuality ==
+                            quality;
 
                     return GestureDetector(
                       onTap: () {
+                        if (_isDownloading) {
+                          return;
+                        }
+
                         setState(() {
                           _selectedQuality =
                               quality;
@@ -338,16 +445,24 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
                       },
                       child: Container(
                         padding:
-                        const EdgeInsets.symmetric(
+                        const EdgeInsets
+                            .symmetric(
                           horizontal: 20,
                           vertical: 12,
                         ),
-                        decoration: BoxDecoration(
+                        decoration:
+                        BoxDecoration(
                           color: selected
-                              ? const Color(0xFF635BFF)
-                              : const Color(0xFF151B2D),
+                              ? const Color(
+                            0xFF635BFF,
+                          )
+                              : const Color(
+                            0xFF151B2D,
+                          ),
                           borderRadius:
-                          BorderRadius.circular(12),
+                          BorderRadius.circular(
+                            12,
+                          ),
                           border: Border.all(
                             color: selected
                                 ? const Color(
@@ -358,7 +473,8 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
                         ),
                         child: Text(
                           quality,
-                          style: const TextStyle(
+                          style:
+                          const TextStyle(
                             fontWeight:
                             FontWeight.w600,
                           ),
@@ -376,37 +492,50 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton.icon(
-                  onPressed: _isDownloading ? null : _download,
-                  icon: _isDownloading ?
-                  const SizedBox(
+                  onPressed:
+                  _isDownloading
+                      ? null
+                      : _download,
+                  icon: _isDownloading
+                      ? const SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(
+                    child:
+                    CircularProgressIndicator(
                       strokeWidth: 2,
                       color: Colors.white,
                     ),
                   )
                       : const Icon(
-                    Icons.download_rounded,
+                    Icons
+                        .download_rounded,
                   ),
                   label: Text(
                     _isDownloading
-                        ? 'Preparing...'
-                        : _selectedFormat == 'MP4'
+                        ? 'Downloading...'
+                        : _selectedFormat ==
+                        'MP4'
                         ? 'Download MP4 ($_selectedQuality)'
                         : 'Download MP3',
-                    style: const TextStyle(
+                    style:
+                    const TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      fontWeight:
+                      FontWeight.bold,
                     ),
                   ),
-                  style: ElevatedButton.styleFrom(
+                  style:
+                  ElevatedButton.styleFrom(
                     backgroundColor:
                     const Color(0xFF635BFF),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
+                    foregroundColor:
+                    Colors.white,
+                    shape:
+                    RoundedRectangleBorder(
                       borderRadius:
-                      BorderRadius.circular(16),
+                      BorderRadius.circular(
+                        16,
+                      ),
                     ),
                   ),
                 ),
