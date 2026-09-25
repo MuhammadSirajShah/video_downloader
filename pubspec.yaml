@@ -43,6 +43,7 @@ dependencies:
   cached_network_image: ^3.4.1
   uuid: ^4.6.0
   clipboard: ^3.0.14
+  dio: ^5.11.1                                                  
 
 dev_dependencies:
   flutter_test:

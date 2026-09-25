@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 
+import '../../models/video_model.dart';
+
 class VideoOptionsScreen extends StatefulWidget {
   final String platform;
   final String videoUrl;
+  final VideoModel videoInfo;
 
   const VideoOptionsScreen({
     super.key,
     required this.platform,
     required this.videoUrl,
+    required this.videoInfo,
   });
 
   @override
@@ -25,18 +29,34 @@ class _VideoOptionsScreenState
     'MP3',
   ];
 
-  final List<String> _qualities = [
+  final List<String> _defaultQualities = [
     '360p',
     '480p',
     '720p',
     '1080p',
   ];
 
+  List<String> get _availableQualities {
+    if (widget.videoInfo.qualities.isEmpty) {
+      return _defaultQualities;
+    }
+
+    return widget.videoInfo.qualities
+        .where(
+          (item) =>
+      item.format.toUpperCase() == 'MP4',
+    )
+        .map((item) => item.quality)
+        .where((quality) => quality.isNotEmpty)
+        .toSet()
+        .toList();
+  }
+
   void _download() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text(
-          'Download system will be connected next.',
+          '$_selectedFormat $_selectedQuality download will be connected next.',
         ),
         behavior: SnackBarBehavior.floating,
       ),
@@ -45,6 +65,8 @@ class _VideoOptionsScreenState
 
   @override
   Widget build(BuildContext context) {
+    final qualities = _availableQualities;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -63,7 +85,7 @@ class _VideoOptionsScreenState
             crossAxisAlignment:
             CrossAxisAlignment.start,
             children: [
-              // Video Preview
+              // Preview
               Container(
                 width: double.infinity,
                 height: 210,
@@ -80,7 +102,6 @@ class _VideoOptionsScreenState
                       size: 70,
                       color: Color(0xFF635BFF),
                     ),
-
                     Positioned(
                       bottom: 14,
                       left: 14,
@@ -111,7 +132,7 @@ class _VideoOptionsScreenState
 
               const SizedBox(height: 20),
 
-              // Video Title
+              // Video information
               const Text(
                 'Video',
                 style: TextStyle(
@@ -123,10 +144,22 @@ class _VideoOptionsScreenState
               const SizedBox(height: 5),
 
               Text(
-                'Selected ${widget.platform} video',
+                '${widget.platform} video',
                 style: const TextStyle(
                   fontSize: 19,
                   fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              Text(
+                widget.videoUrl,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white38,
+                  fontSize: 12,
                 ),
               ),
 
@@ -153,6 +186,16 @@ class _VideoOptionsScreenState
                       onTap: () {
                         setState(() {
                           _selectedFormat = format;
+
+                          if (format == 'MP4' &&
+                              qualities.isNotEmpty) {
+                            if (!qualities.contains(
+                              _selectedQuality,
+                            )) {
+                              _selectedQuality =
+                                  qualities.first;
+                            }
+                          }
                         });
                       },
                       child: Container(
@@ -209,69 +252,71 @@ class _VideoOptionsScreenState
                 }).toList(),
               ),
 
-              const SizedBox(height: 28),
+              // Quality only for MP4
+              if (_selectedFormat == 'MP4') ...[
+                const SizedBox(height: 28),
 
-              // Quality
-              const Text(
-                'Video Quality',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                const Text(
+                  'Video Quality',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
 
-              const SizedBox(height: 12),
+                const SizedBox(height: 12),
 
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children:
-                _qualities.map((quality) {
-                  final selected =
-                      _selectedQuality == quality;
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children:
+                  qualities.map((quality) {
+                    final selected =
+                        _selectedQuality == quality;
 
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _selectedQuality =
-                            quality;
-                      });
-                    },
-                    child: Container(
-                      padding:
-                      const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? const Color(0xFF635BFF)
-                            : const Color(0xFF151B2D),
-                        borderRadius:
-                        BorderRadius.circular(12),
-                        border: Border.all(
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedQuality =
+                              quality;
+                        });
+                      },
+                      child: Container(
+                        padding:
+                        const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
                           color: selected
-                              ? const Color(
-                            0xFF635BFF,
-                          )
-                              : Colors.white10,
+                              ? const Color(0xFF635BFF)
+                              : const Color(0xFF151B2D),
+                          borderRadius:
+                          BorderRadius.circular(12),
+                          border: Border.all(
+                            color: selected
+                                ? const Color(
+                              0xFF635BFF,
+                            )
+                                : Colors.white10,
+                          ),
+                        ),
+                        child: Text(
+                          quality,
+                          style: const TextStyle(
+                            fontWeight:
+                            FontWeight.w600,
+                          ),
                         ),
                       ),
-                      child: Text(
-                        quality,
-                        style: const TextStyle(
-                          fontWeight:
-                          FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
+                    );
+                  }).toList(),
+                ),
+              ],
 
               const SizedBox(height: 30),
 
-              // Download
+              // Download button
               SizedBox(
                 width: double.infinity,
                 height: 56,
@@ -281,7 +326,9 @@ class _VideoOptionsScreenState
                     Icons.download_rounded,
                   ),
                   label: Text(
-                    'Download $_selectedFormat',
+                    _selectedFormat == 'MP4'
+                        ? 'Download MP4 ($_selectedQuality)'
+                        : 'Download MP3',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -301,9 +348,8 @@ class _VideoOptionsScreenState
 
               const SizedBox(height: 15),
 
-              // Information
               const Text(
-                'Available formats and qualities will depend on the supported source and its permitted access.',
+                'Available formats and qualities depend on the supported source and its permitted access.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white38,

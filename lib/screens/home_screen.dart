@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:video_downloader/screens/video_options/video_options_screen.dart';
 
 import '../../services/url_detector.dart';
+import '../../models/video_model.dart';
+import '../../services/api_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,10 +14,12 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final TextEditingController _urlController =
-  TextEditingController();
+
+  final TextEditingController _urlController = TextEditingController();
+  final ApiService _apiService = ApiService();
 
   String? _detectedPlatform;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -40,7 +44,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     _urlController.text = text.trim();
-
     _detectUrl(text);
 
     if (UrlDetector.detectPlatform(text) == null) {
@@ -48,14 +51,15 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _downloadPressed() {
-    if (_urlController.text.trim().isEmpty) {
+  Future<void> _downloadPressed() async {
+    final url = _urlController.text.trim();
+
+    if (url.isEmpty) {
       _showMessage(
         'Please paste a video link first.',
       );
       return;
     }
-
     if (_detectedPlatform == null) {
       _showMessage(
         'This platform is not supported.',
@@ -63,15 +67,36 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => VideoOptionsScreen(
-          platform: _detectedPlatform!,
-          videoUrl: _urlController.text.trim(),
+    setState(() {
+      _isLoading = true;
+    });
+
+    final VideoModel result =
+    await _apiService.getVideoInfo(url);
+
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (result.success) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => VideoOptionsScreen(
+            platform: result.platform,
+            videoUrl: result.sourceUrl,
+            videoInfo: result,
+          ),
         ),
-      ),
-    );
+      );
+    } else {
+      _showMessage(
+        result.message ??
+            'Unable to process this video link.',
+      );
+    }
   }
 
   void _showMessage(String message) {
@@ -117,23 +142,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(width: 12),
                   const Column(
-                    crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Video Downloader',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      Text('Video Downloader', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold,),),
                       SizedBox(height: 3),
-                      Text(
-                        'Download your favorite media',
-                        style: TextStyle(
-                          color: Colors.white60,
-                          fontSize: 12,
-                        ),
+                      Text('Download your favorite media', style: TextStyle(color: Colors.white60, fontSize: 12,),
                       ),
                     ],
                   ),
@@ -251,29 +264,64 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 16),
 
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final connected =
+                    await _apiService.checkServer();
+
+                    if (!mounted) return;
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          connected
+                              ? 'Backend connected successfully '
+                              : 'Backend connection failed ',
+                        ),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.cloud_outlined),
+                  label: const Text('Test Backend Connection'),
+                ),
+              ),
+              SizedBox(height: 16,),
               // Download Button
               SizedBox(
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton.icon(
-                  onPressed: _downloadPressed,
-                  icon: const Icon(
+                  onPressed: _isLoading
+                      ? null
+                      : _downloadPressed,
+                  icon: _isLoading
+                      ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                      : const Icon(
                     Icons.download_rounded,
                   ),
-                  label: const Text(
-                    'Download',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  label: Text(
+                    _isLoading
+                        ? 'Checking...'
+                        : 'Download',
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor:
                     const Color(0xFF635BFF),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                      BorderRadius.circular(15),
+                    minimumSize: const Size(
+                      double.infinity,
+                      56,
                     ),
                   ),
                 ),
