@@ -61,4 +61,42 @@ class ApiService {
       );
     }
   }
+
+  Future<Map<String, dynamic>> createDownloadJob({
+    required String url,
+    required String format,
+    String? quality,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '$baseUrl/api/video/download',
+        data: {
+          'url': url,
+          'format': format,
+          'quality': quality,
+        },
+      );
+
+      return Map<String, dynamic>.from(
+        response.data,
+      );
+    } on DioException catch (e) {
+      if (e.response != null &&
+          e.response!.data is Map) {
+        return Map<String, dynamic>.from(
+          e.response!.data,
+        );
+      }
+
+      return {
+        'success': false,
+        'message': 'Could not connect to the server.',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Something went wrong.',
+      };
+    }
+  }
 }

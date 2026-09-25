@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/video_model.dart';
+import '../../services/api_service.dart';
 
 class VideoOptionsScreen extends StatefulWidget {
   final String platform;
@@ -15,12 +16,15 @@ class VideoOptionsScreen extends StatefulWidget {
   });
 
   @override
-  State<VideoOptionsScreen> createState() =>
-      _VideoOptionsScreenState();
+  State<VideoOptionsScreen> createState() => _VideoOptionsScreenState();
 }
 
-class _VideoOptionsScreenState
-    extends State<VideoOptionsScreen> {
+class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
+
+  final ApiService _apiService = ApiService();
+
+  bool _isDownloading = false;
+
   String _selectedFormat = 'MP4';
   String _selectedQuality = '720p';
 
@@ -52,15 +56,38 @@ class _VideoOptionsScreenState
         .toList();
   }
 
-  void _download() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '$_selectedFormat $_selectedQuality download will be connected next.',
-        ),
-        behavior: SnackBarBehavior.floating,
-      ),
+  Future<void> _download() async {
+    if (_isDownloading) return;
+
+    setState(() {
+      _isDownloading = true;
+    });
+
+    final result = await _apiService.createDownloadJob(
+      url: widget.videoUrl,
+      format: _selectedFormat,
+      quality: _selectedFormat == 'MP4'
+          ? _selectedQuality
+          : null,
     );
+
+    if (!mounted) return;
+
+    setState(() {
+      _isDownloading = false;
+    });
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            result['message'] ??
+                'Download request completed.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
   }
 
   @override
@@ -321,12 +348,23 @@ class _VideoOptionsScreenState
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton.icon(
-                  onPressed: _download,
-                  icon: const Icon(
+                  onPressed: _isDownloading ? null : _download,
+                  icon: _isDownloading ?
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                      : const Icon(
                     Icons.download_rounded,
                   ),
                   label: Text(
-                    _selectedFormat == 'MP4'
+                    _isDownloading
+                        ? 'Preparing...'
+                        : _selectedFormat == 'MP4'
                         ? 'Download MP4 ($_selectedQuality)'
                         : 'Download MP3',
                     style: const TextStyle(

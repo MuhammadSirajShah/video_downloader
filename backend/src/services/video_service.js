@@ -1,7 +1,4 @@
 async function getVideoInfo(url, platform) {
-  // Actual media provider integration
-  // will be connected here later.
-
   return {
     success: true,
     platform: platform,
@@ -12,6 +9,28 @@ async function getVideoInfo(url, platform) {
   };
 }
 
+async function createDownloadJob({
+  url,
+  platform,
+  format,
+  quality,
+}) {
+  // Actual permitted media provider
+  // will be connected here later.
+
+  return {
+    success: false,
+    platform: platform,
+    sourceUrl: url,
+    format: format,
+    quality: quality,
+    downloadUrl: null,
+    message:
+      'Download provider is not connected yet.',
+  };
+}
+
 module.exports = {
   getVideoInfo,
+  createDownloadJob,
 };
