@@ -1,8 +1,14 @@
+const ProviderResult = require('./provider_result');
+
 class MediaProvider {
   async getVideoInfo(url, platform) {
-    throw new Error(
-      'Media provider getVideoInfo() is not implemented.',
-    );
+    return new ProviderResult({
+      success: false,
+      platform: platform,
+      sourceUrl: url,
+      message:
+        'No media provider is configured.',
+    }).toJson();
   }
 
   async createDownloadJob({
@@ -11,9 +17,16 @@ class MediaProvider {
     format,
     quality,
   }) {
-    throw new Error(
-      'Media provider createDownloadJob() is not implemented.',
-    );
+    return new ProviderResult({
+      success: false,
+      platform: platform,
+      sourceUrl: url,
+      format: format,
+      quality: quality,
+      downloadUrl: null,
+      message:
+        'No media provider is configured.',
+    }).toJson();
   }
 }
 

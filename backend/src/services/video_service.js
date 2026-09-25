@@ -1,10 +1,13 @@
-const MediaProvider = require('./media_provider');
-
-const mediaProvider = new MediaProvider();
+const {
+  getMediaProvider,
+} = require('./provider_factory');
 
 async function getVideoInfo(url, platform) {
   try {
-    return await mediaProvider.getVideoInfo(
+    const provider =
+      getMediaProvider(platform);
+
+    return await provider.getVideoInfo(
       url,
       platform,
     );
@@ -20,7 +23,7 @@ async function getVideoInfo(url, platform) {
       sourceUrl: url,
       media: null,
       message:
-        'Media provider is not connected yet.',
+        'Unable to process this media request.',
     };
   }
 }
@@ -32,7 +35,10 @@ async function createDownloadJob({
   quality,
 }) {
   try {
-    return await mediaProvider.createDownloadJob({
+    const provider =
+      getMediaProvider(platform);
+
+    return await provider.createDownloadJob({
       url,
       platform,
       format,
@@ -52,7 +58,7 @@ async function createDownloadJob({
       quality: quality,
       downloadUrl: null,
       message:
-        'Download provider is not connected yet.',
+        'Unable to create the download request.',
     };
   }
 }
