@@ -7,6 +7,18 @@ const {
   createDownloadJob,
 } = require('../services/video_service');
 
+const ALLOWED_FORMATS = [
+  'MP4',
+  'MP3',
+];
+
+const ALLOWED_QUALITIES = [
+  '360p',
+  '480p',
+  '720p',
+  '1080p',
+];
+
 async function getVideoInfo(req, res) {
   try {
     const { url } = req.body;
@@ -18,7 +30,16 @@ async function getVideoInfo(req, res) {
       });
     }
 
-    const platform = detectPlatform(url);
+    const cleanUrl = url.trim();
+
+    if (!cleanUrl) {
+      return res.status(400).json({
+        success: false,
+        message: 'Video URL cannot be empty.',
+      });
+    }
+
+    const platform = detectPlatform(cleanUrl);
 
     if (!platform) {
       return res.status(400).json({
@@ -30,7 +51,7 @@ async function getVideoInfo(req, res) {
 
     const result =
       await getVideoInfoFromService(
-        url,
+        cleanUrl,
         platform,
       );
 
@@ -60,21 +81,55 @@ async function downloadVideo(req, res) {
       });
     }
 
-    if (!format || !['MP4', 'MP3'].includes(format)) {
+    const cleanUrl = url.trim();
+
+    if (!cleanUrl) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid format.',
+        message: 'Video URL cannot be empty.',
       });
     }
 
-    if (format === 'MP4' && !quality) {
+    const normalizedFormat =
+      typeof format === 'string'
+        ? format.trim().toUpperCase()
+        : '';
+
+    if (
+      !ALLOWED_FORMATS.includes(
+        normalizedFormat,
+      )
+    ) {
       return res.status(400).json({
         success: false,
-        message: 'Video quality is required.',
+        message:
+          'Invalid format. Use MP4 or MP3.',
       });
     }
 
-    const platform = detectPlatform(url);
+    let normalizedQuality = null;
+
+    if (normalizedFormat === 'MP4') {
+      normalizedQuality =
+        typeof quality === 'string'
+          ? quality.trim().toLowerCase()
+          : '';
+
+      if (
+        !ALLOWED_QUALITIES.includes(
+          normalizedQuality,
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Invalid video quality.',
+        });
+      }
+    }
+
+    const platform =
+      detectPlatform(cleanUrl);
 
     if (!platform) {
       return res.status(400).json({
@@ -84,12 +139,13 @@ async function downloadVideo(req, res) {
       });
     }
 
-    const result = await createDownloadJob({
-      url,
-      platform,
-      format,
-      quality: quality || null,
-    });
+    const result =
+      await createDownloadJob({
+        url: cleanUrl,
+        platform,
+        format: normalizedFormat,
+        quality: normalizedQuality,
+      });
 
     return res.json(result);
   } catch (error) {

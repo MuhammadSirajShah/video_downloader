@@ -1,10 +1,122 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/downloader_provider.dart';
 
 class DownloadsScreen extends StatelessWidget {
   const DownloadsScreen({super.key});
+
+  Future<void> _openFile(
+      BuildContext context,
+      String filePath,
+      ) async {
+    final file = File(filePath);
+
+    if (!await file.exists()) {
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'File no longer exists.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+
+      return;
+    }
+
+    final result = await OpenFilex.open(filePath);
+
+    if (!context.mounted) return;
+
+    if (result.type != ResultType.done) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              result.message.isNotEmpty
+                  ? result.message
+                  : 'Could not open the file.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+    }
+  }
+
+  Future<void> _deleteDownload(
+      BuildContext context,
+      DownloaderProvider provider,
+      DownloadItem item,
+      ) async {
+    if (item.filePath != null &&
+        item.filePath!.isNotEmpty) {
+      final file = File(item.filePath!);
+
+      if (await file.exists()) {
+        await file.delete();
+      }
+    }
+
+    await provider.removeDownload(item.id);
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Download deleted.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+  }
+
+  Future<void> _showFilePath(
+      BuildContext context,
+      String filePath,
+      ) async {
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF151B2D),
+          title: const Text(
+            'File Location',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: SelectableText(
+            filePath,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 13,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,10 +140,12 @@ class DownloadsScreen extends StatelessWidget {
               child: Padding(
                 padding: EdgeInsets.all(30),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment:
+                  MainAxisAlignment.center,
                   children: [
                     Icon(
-                      Icons.download_for_offline_outlined,
+                      Icons
+                          .download_for_offline_outlined,
                       size: 80,
                       color: Colors.white24,
                     ),
@@ -77,7 +191,8 @@ class DownloadsScreen extends StatelessWidget {
 
               return Dismissible(
                 key: ValueKey(item.id),
-                direction: DismissDirection.endToStart,
+                direction:
+                DismissDirection.endToStart,
                 background: Container(
                   alignment: Alignment.centerRight,
                   padding:
@@ -92,26 +207,18 @@ class DownloadsScreen extends StatelessWidget {
                     color: Colors.white,
                   ),
                 ),
-                onDismissed: (_) async {
-                  await provider.removeDownload(
-                    item.id,
+                confirmDismiss: (_) async {
+                  await _deleteDownload(
+                    context,
+                    provider,
+                    item,
                   );
 
-                  if (!context.mounted) return;
-
-                  ScaffoldMessenger.of(context)
-                      .showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Download removed.',
-                      ),
-                      behavior:
-                      SnackBarBehavior.floating,
-                    ),
-                  );
+                  return true;
                 },
                 child: Container(
-                  padding: const EdgeInsets.all(16),
+                  padding:
+                  const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: const Color(0xFF151B2D),
                     borderRadius:
@@ -123,16 +230,21 @@ class DownloadsScreen extends StatelessWidget {
                   child: Column(
                     children: [
                       Row(
+                        crossAxisAlignment:
+                        CrossAxisAlignment.start,
                         children: [
                           Container(
                             height: 52,
                             width: 52,
                             decoration: BoxDecoration(
                               color:
-                              const Color(0xFF635BFF)
-                                  .withOpacity(0.15),
+                              const Color(
+                                0xFF635BFF,
+                              ).withOpacity(0.15),
                               borderRadius:
-                              BorderRadius.circular(14),
+                              BorderRadius.circular(
+                                14,
+                              ),
                             ),
                             child: Icon(
                               item.format == 'MP4'
@@ -141,7 +253,9 @@ class DownloadsScreen extends StatelessWidget {
                                   : Icons
                                   .audio_file_rounded,
                               color:
-                              const Color(0xFF8B7FFF),
+                              const Color(
+                                0xFF8B7FFF,
+                              ),
                               size: 28,
                             ),
                           ),
@@ -151,11 +265,13 @@ class DownloadsScreen extends StatelessWidget {
                           Expanded(
                             child: Column(
                               crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                              CrossAxisAlignment
+                                  .start,
                               children: [
                                 Text(
                                   item.platform,
-                                  style: const TextStyle(
+                                  style:
+                                  const TextStyle(
                                     fontSize: 16,
                                     fontWeight:
                                     FontWeight.bold,
@@ -168,8 +284,10 @@ class DownloadsScreen extends StatelessWidget {
                                   item.format == 'MP4'
                                       ? '${item.format} • ${item.quality ?? ''}'
                                       : item.format,
-                                  style: const TextStyle(
-                                    color: Colors.white60,
+                                  style:
+                                  const TextStyle(
+                                    color:
+                                    Colors.white60,
                                     fontSize: 13,
                                   ),
                                 ),
@@ -192,14 +310,18 @@ class DownloadsScreen extends StatelessWidget {
                                           .hourglass_top_rounded,
                                       size: 15,
                                       color: isCompleted
-                                          ? Colors.greenAccent
+                                          ? Colors
+                                          .greenAccent
                                           : isFailed
-                                          ? Colors.redAccent
+                                          ? Colors
+                                          .redAccent
                                           : Colors
                                           .orangeAccent,
                                     ),
 
-                                    const SizedBox(width: 5),
+                                    const SizedBox(
+                                      width: 5,
+                                    ),
 
                                     Text(
                                       item.status,
@@ -214,7 +336,8 @@ class DownloadsScreen extends StatelessWidget {
                                             .orangeAccent,
                                         fontSize: 12,
                                         fontWeight:
-                                        FontWeight.w600,
+                                        FontWeight
+                                            .w600,
                                       ),
                                     ),
                                   ],
@@ -223,11 +346,112 @@ class DownloadsScreen extends StatelessWidget {
                             ),
                           ),
 
-                          if (isCompleted)
-                            const Icon(
-                              Icons.check_circle,
-                              color: Colors.greenAccent,
+                          PopupMenuButton<String>(
+                            icon: const Icon(
+                              Icons.more_vert,
+                              color: Colors.white54,
                             ),
+                            color:
+                            const Color(0xFF1D253B),
+                            onSelected: (value) async {
+                              if (value == 'open' &&
+                                  item.filePath !=
+                                      null) {
+                                await _openFile(
+                                  context,
+                                  item.filePath!,
+                                );
+                              }
+
+                              if (value == 'location' &&
+                                  item.filePath !=
+                                      null) {
+                                await _showFilePath(
+                                  context,
+                                  item.filePath!,
+                                );
+                              }
+
+                              if (value == 'delete') {
+                                await _deleteDownload(
+                                  context,
+                                  provider,
+                                  item,
+                                );
+                              }
+                            },
+                            itemBuilder: (context) {
+                              return [
+                                if (isCompleted &&
+                                    item.filePath !=
+                                        null)
+                                  const PopupMenuItem(
+                                    value: 'open',
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons
+                                              .play_circle_outline_rounded,
+                                          color:
+                                          Colors.white70,
+                                          size: 20,
+                                        ),
+                                        SizedBox(
+                                          width: 10,
+                                        ),
+                                        Text(
+                                          'Open File',
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                if (item.filePath !=
+                                    null)
+                                  const PopupMenuItem(
+                                    value: 'location',
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons
+                                              .folder_open_rounded,
+                                          color:
+                                          Colors.white70,
+                                          size: 20,
+                                        ),
+                                        SizedBox(
+                                          width: 10,
+                                        ),
+                                        Text(
+                                          'File Location',
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                const PopupMenuItem(
+                                  value: 'delete',
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons
+                                            .delete_outline_rounded,
+                                        color:
+                                        Colors.redAccent,
+                                        size: 20,
+                                      ),
+                                      SizedBox(
+                                        width: 10,
+                                      ),
+                                      Text(
+                                        'Delete',
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ];
+                            },
+                          ),
                         ],
                       ),
 
@@ -248,7 +472,8 @@ class DownloadsScreen extends StatelessWidget {
                           Alignment.centerRight,
                           child: Text(
                             '${(item.progress * 100).toStringAsFixed(0)}%',
-                            style: const TextStyle(
+                            style:
+                            const TextStyle(
                               color: Colors.white54,
                               fontSize: 12,
                             ),
@@ -260,15 +485,92 @@ class DownloadsScreen extends StatelessWidget {
                           item.filePath != null) ...[
                         const SizedBox(height: 10),
 
-                        Align(
-                          alignment:
-                          Alignment.centerLeft,
-                          child: Text(
-                            'Saved successfully',
-                            style: const TextStyle(
-                              color: Colors.greenAccent,
-                              fontSize: 12,
+                        GestureDetector(
+                          onTap: () {
+                            _openFile(
+                              context,
+                              item.filePath!,
+                            );
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            padding:
+                            const EdgeInsets.all(11),
+                            decoration: BoxDecoration(
+                              color: Colors.greenAccent
+                                  .withOpacity(0.08),
+                              borderRadius:
+                              BorderRadius.circular(
+                                10,
+                              ),
                             ),
+                            child: const Row(
+                              mainAxisAlignment:
+                              MainAxisAlignment
+                                  .center,
+                              children: [
+                                Icon(
+                                  Icons
+                                      .play_circle_outline_rounded,
+                                  color:
+                                  Colors.greenAccent,
+                                  size: 19,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Open File',
+                                  style: TextStyle(
+                                    color:
+                                    Colors.greenAccent,
+                                    fontSize: 13,
+                                    fontWeight:
+                                    FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+
+                      if (isFailed) ...[
+                        const SizedBox(height: 10),
+
+                        Container(
+                          width: double.infinity,
+                          padding:
+                          const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.redAccent
+                                .withOpacity(0.08),
+                            borderRadius:
+                            BorderRadius.circular(
+                              10,
+                            ),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(
+                                Icons
+                                    .error_outline_rounded,
+                                color:
+                                Colors.redAccent,
+                                size: 18,
+                              ),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Download failed.',
+                                  style: TextStyle(
+                                    color:
+                                    Colors.redAccent,
+                                    fontSize: 12,
+                                    fontWeight:
+                                    FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
