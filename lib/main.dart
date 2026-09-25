@@ -1,16 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:video_downloader/providers/downloader_provider.dart';
-import 'package:video_downloader/screens/home_screen.dart';
 
 
-void main() {
+import 'providers/downloader_provider.dart';
+import 'screens/home_screen.dart';
+
+
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final downloaderProvider =
+  DownloaderProvider();
+
+  await downloaderProvider.loadDownloads();
+
   runApp(
-      ChangeNotifierProvider(
-          create: (_) => DownloaderProvider(),
-          child:  VideoDownloaderApp(),
-
-      ),
+    ChangeNotifierProvider.value(
+      value: downloaderProvider,
+      child: const VideoDownloaderApp(),
+    ),
   );
 }
 
@@ -25,9 +34,12 @@ class VideoDownloaderApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0B1020),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF635BFF),
+        scaffoldBackgroundColor:
+        const Color(0xFF0B1020),
+        colorScheme:
+        ColorScheme.fromSeed(
+          seedColor:
+          const Color(0xFF635BFF),
           brightness: Brightness.dark,
         ),
       ),

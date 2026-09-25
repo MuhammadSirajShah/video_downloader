@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../models/video_model.dart';
+import '../../providers/downloader_provider.dart';
 import '../../services/api_service.dart';
 
 class VideoOptionsScreen extends StatefulWidget {
@@ -77,17 +80,42 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
       _isDownloading = false;
     });
 
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            result['message'] ??
-                'Download request completed.',
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
+    if (result['success'] == true) {
+      final id = const Uuid().v4();
+
+      await context.read<DownloaderProvider>().addDownload(
+        id: id,
+        platform: widget.platform,
+        url: widget.videoUrl,
+        format: _selectedFormat,
+        quality: _selectedFormat == 'MP4'
+            ? _selectedQuality
+            : null,
       );
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Download added successfully.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+    } else {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              result['message'] ??
+                  'Download could not be started.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+    }
   }
 
   @override
