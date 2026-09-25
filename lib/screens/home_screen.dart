@@ -5,6 +5,7 @@ import 'package:video_downloader/screens/video_options/video_options_screen.dart
 import '../../services/url_detector.dart';
 import '../../models/video_model.dart';
 import '../../services/api_service.dart';
+import 'downloads/downloads_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -368,7 +369,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   PlatformCard(
                     icon:
                     Icons.favorite_border_rounded,
-                    name: 'Likee',
+                    name: 'Like',
                   ),
                   PlatformCard(
                     icon:
@@ -416,6 +417,17 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: NavigationBar(
         backgroundColor: const Color(0xFF0F1526),
         selectedIndex: 0,
+        onDestinationSelected: (index) {
+          if (index == 1) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                const DownloadsScreen(),
+              ),
+            );
+          }
+        },
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),

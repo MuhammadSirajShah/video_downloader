@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:video_downloader/providers/downloader_provider.dart';
 import 'package:video_downloader/screens/home_screen.dart';
 
 
 void main() {
-  runApp(const VideoDownloaderApp());
+  runApp(
+      ChangeNotifierProvider(
+          create: (_) => DownloaderProvider(),
+          child:  VideoDownloaderApp(),
+
+      ),
+  );
 }
 
 class VideoDownloaderApp extends StatelessWidget {
