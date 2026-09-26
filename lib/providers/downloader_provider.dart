@@ -43,33 +43,44 @@ class DownloadItem {
   factory DownloadItem.fromJson(
       Map<String, dynamic> json,
       ) {
+    final rawProgress = json['progress'];
+
+    double progress = 0.0;
+
+    if (rawProgress is num) {
+      progress = rawProgress.toDouble();
+    } else if (rawProgress is String) {
+      progress = double.tryParse(rawProgress) ?? 0.0;
+    }
+
     return DownloadItem(
-      id: json['id'] ?? '',
-      platform: json['platform'] ?? '',
-      url: json['url'] ?? '',
-      format: json['format'] ?? '',
-      quality: json['quality'],
-      createdAt:
-      DateTime.tryParse(
-        json['createdAt'] ?? '',
+      id: json['id']?.toString() ?? '',
+      platform: json['platform']?.toString() ?? '',
+      url: json['url']?.toString() ?? '',
+      format: json['format']?.toString() ?? '',
+      quality: json['quality']?.toString(),
+      createdAt: DateTime.tryParse(
+        json['createdAt']?.toString() ?? '',
       ) ??
           DateTime.now(),
-      status: json['status'] ?? 'Preparing',
-      filePath: json['filePath'],
-      progress:
-      (json['progress'] ?? 0.0).toDouble(),
+      status: json['status']?.toString() ?? 'Preparing',
+      filePath: json['filePath']?.toString(),
+      progress: progress.clamp(0.0, 1.0),
     );
   }
 }
 
 class DownloaderProvider extends ChangeNotifier {
-  static const String _storageKey =
-      'download_items';
+  static const String _storageKey = 'download_items';
 
   final List<DownloadItem> _downloads = [];
 
   List<DownloadItem> get downloads =>
       List.unmodifiable(_downloads);
+
+  // ==========================================
+  // LOAD DOWNLOADS
+  // ==========================================
 
   Future<void> loadDownloads() async {
     final prefs =
@@ -83,20 +94,30 @@ class DownloaderProvider extends ChangeNotifier {
     }
 
     try {
-      final List<dynamic> decoded =
-      jsonDecode(savedData);
+      final decoded = jsonDecode(savedData);
 
-      _downloads.clear();
+      if (decoded is! List) {
+        debugPrint(
+          'Saved downloads data is not a list.',
+        );
+        return;
+      }
 
-      _downloads.addAll(
-        decoded
-            .whereType<Map>()
-            .map(
-              (item) => DownloadItem.fromJson(
-            Map<String, dynamic>.from(item),
-          ),
-        ),
-      );
+      final loadedDownloads = <DownloadItem>[];
+
+      for (final item in decoded) {
+        if (item is Map) {
+          loadedDownloads.add(
+            DownloadItem.fromJson(
+              Map<String, dynamic>.from(item),
+            ),
+          );
+        }
+      }
+
+      _downloads
+        ..clear()
+        ..addAll(loadedDownloads);
 
       notifyListeners();
     } catch (e) {
@@ -106,19 +127,33 @@ class DownloaderProvider extends ChangeNotifier {
     }
   }
 
+  // ==========================================
+  // SAVE DOWNLOADS
+  // ==========================================
+
   Future<void> _saveDownloads() async {
-    final prefs =
-    await SharedPreferences.getInstance();
+    try {
+      final prefs =
+      await SharedPreferences.getInstance();
 
-    final data = _downloads
-        .map((item) => item.toJson())
-        .toList();
+      final data = _downloads
+          .map((item) => item.toJson())
+          .toList();
 
-    await prefs.setString(
-      _storageKey,
-      jsonEncode(data),
-    );
+      await prefs.setString(
+        _storageKey,
+        jsonEncode(data),
+      );
+    } catch (e) {
+      debugPrint(
+        'Failed to save downloads: $e',
+      );
+    }
   }
+
+  // ==========================================
+  // ADD DOWNLOAD
+  // ==========================================
 
   Future<void> addDownload({
     required String id,
@@ -144,6 +179,10 @@ class DownloaderProvider extends ChangeNotifier {
 
     await _saveDownloads();
   }
+
+  // ==========================================
+  // UPDATE PROGRESS
+  // ==========================================
 
   Future<void> updateProgress(
       String id,
@@ -174,6 +213,10 @@ class DownloaderProvider extends ChangeNotifier {
     await _saveDownloads();
   }
 
+  // ==========================================
+  // UPDATE STATUS
+  // ==========================================
+
   Future<void> updateStatus(
       String id,
       String status,
@@ -202,6 +245,10 @@ class DownloaderProvider extends ChangeNotifier {
 
     await _saveDownloads();
   }
+
+  // ==========================================
+  // UPDATE FILE PATH
+  // ==========================================
 
   Future<void> updateFilePath(
       String id,
@@ -232,6 +279,10 @@ class DownloaderProvider extends ChangeNotifier {
     await _saveDownloads();
   }
 
+  // ==========================================
+  // REMOVE DOWNLOAD
+  // ==========================================
+
   Future<void> removeDownload(
       String id,
       ) async {
@@ -243,6 +294,10 @@ class DownloaderProvider extends ChangeNotifier {
 
     await _saveDownloads();
   }
+
+  // ==========================================
+  // CLEAR ALL DOWNLOADS
+  // ==========================================
 
   Future<void> clearDownloads() async {
     _downloads.clear();
