@@ -4,14 +4,22 @@ import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 
 class DownloaderService {
-  final Dio _dio = Dio();
+  final Dio _dio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(minutes: 10),
+      sendTimeout: const Duration(seconds: 15),
+    ),
+  );
 
   Future<String> downloadFile({
     required String downloadUrl,
     required String fileName,
     required void Function(double progress) onProgress,
   }) async {
-    if (downloadUrl.trim().isEmpty) {
+    final url = downloadUrl.trim();
+
+    if (url.isEmpty) {
       throw Exception('Download URL is empty.');
     }
 
@@ -28,12 +36,17 @@ class DownloaderService {
       );
     }
 
+    final safeFileName = _sanitizeFileName(
+      fileName,
+    );
+
     final filePath =
-        '${downloadDirectory.path}/$fileName';
+        '${downloadDirectory.path}/$safeFileName';
 
     await _dio.download(
-      downloadUrl,
+      url,
       filePath,
+      deleteOnError: true,
       onReceiveProgress: (received, total) {
         if (total > 0) {
           final progress =
@@ -46,12 +59,24 @@ class DownloaderService {
       },
     );
 
+    final file = File(filePath);
+
+    if (!await file.exists()) {
+      throw Exception(
+        'Downloaded file was not found.',
+      );
+    }
+
     return filePath;
   }
 
   Future<bool> fileExists(
       String filePath,
       ) async {
+    if (filePath.trim().isEmpty) {
+      return false;
+    }
+
     final file = File(filePath);
 
     return file.exists();
@@ -60,10 +85,40 @@ class DownloaderService {
   Future<void> deleteFile(
       String filePath,
       ) async {
+    if (filePath.trim().isEmpty) {
+      return;
+    }
+
     final file = File(filePath);
 
     if (await file.exists()) {
       await file.delete();
     }
+  }
+
+  String _sanitizeFileName(
+      String fileName,
+      ) {
+    var name = fileName.trim();
+
+    if (name.isEmpty) {
+      name = 'download';
+    }
+
+    name = name.replaceAll(
+      RegExp(r'[<>:"/\\|?*\x00-\x1F]'),
+      '_',
+    );
+
+    name = name.replaceAll(
+      RegExp(r'\s+'),
+      '_',
+    );
+
+    if (name.length > 100) {
+      name = name.substring(0, 100);
+    }
+
+    return name;
   }
 }

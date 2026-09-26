@@ -303,7 +303,6 @@ class DownloaderProvider extends ChangeNotifier {
     _downloads.clear();
 
     notifyListeners();
-
     await _saveDownloads();
   }
 }
