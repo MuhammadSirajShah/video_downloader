@@ -11,6 +11,10 @@ class DownloaderService {
     required String fileName,
     required void Function(double progress) onProgress,
   }) async {
+    if (downloadUrl.trim().isEmpty) {
+      throw Exception('Download URL is empty.');
+    }
+
     final directory =
     await getApplicationDocumentsDirectory();
 
@@ -32,7 +36,12 @@ class DownloaderService {
       filePath,
       onReceiveProgress: (received, total) {
         if (total > 0) {
-          onProgress(received / total);
+          final progress =
+              received / total;
+
+          onProgress(
+            progress.clamp(0.0, 1.0),
+          );
         }
       },
     );
@@ -40,13 +49,17 @@ class DownloaderService {
     return filePath;
   }
 
-  Future<bool> fileExists(String filePath) async {
+  Future<bool> fileExists(
+      String filePath,
+      ) async {
     final file = File(filePath);
 
     return file.exists();
   }
 
-  Future<void> deleteFile(String filePath) async {
+  Future<void> deleteFile(
+      String filePath,
+      ) async {
     final file = File(filePath);
 
     if (await file.exists()) {

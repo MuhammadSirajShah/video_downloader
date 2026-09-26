@@ -72,18 +72,18 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
   // MEDIA DATA
   // ==========================================
 
-  Map<String, dynamic>? _getMedia() {
-    final formats =
-        widget.videoInfo.qualities;
-
-    if (formats.isEmpty) {
-      return null;
-    }
-
-    return {
-      'title': _videoTitleFallback,
-    };
-  }
+  // Map<String, dynamic>? _getMedia() {
+  //   final formats =
+  //       widget.videoInfo.qualities;
+  //
+  //   if (formats.isEmpty) {
+  //     return null;
+  //   }
+  //
+  //   return {
+  //     'title': _videoTitleFallback,
+  //   };
+  // }
 
   String get _videoTitleFallback {
     return '${widget.platform} Video';
@@ -128,17 +128,14 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
       _isDownloading = true;
     });
 
-    final result =
-    await _apiService.createDownloadJob(
+    final result = await _apiService.createDownloadJob(
       url: widget.videoUrl,
       format: _selectedFormat,
       quality: _selectedFormat == 'MP4'
           ? _selectedQuality
           : null,
     );
-
     if (!mounted) return;
-
     if (result['success'] != true) {
       setState(() {
         _isDownloading = false;
@@ -152,15 +149,12 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
       return;
     }
 
-    final downloadUrl =
-    result['downloadUrl'];
+    final downloadUrl = result['downloadUrl'];
 
-    if (downloadUrl == null ||
-        downloadUrl.toString().isEmpty) {
+    if (downloadUrl == null || downloadUrl.toString().isEmpty) {
       setState(() {
         _isDownloading = false;
       });
-
       _showMessage(
         'No downloadable file was returned by the server.',
       );
@@ -169,10 +163,7 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
     }
 
     final id = const Uuid().v4();
-
-    final provider =
-    context.read<DownloaderProvider>();
-
+    final provider = context.read<DownloaderProvider>();
     await provider.addDownload(
       id: id,
       platform: widget.platform,
@@ -184,8 +175,7 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
     );
 
     await provider.updateStatus(
-      id,
-      'Downloading',
+      id, 'Downloading',
     );
 
     try {
