@@ -24,45 +24,67 @@ class VideoModel {
   factory VideoModel.fromJson(
       Map<String, dynamic> json,
       ) {
-    final media = json['media'];
-
     String? title;
     String? thumbnail;
     String? duration;
 
-    List<VideoQuality> qualities = [];
+    final List<VideoQuality> qualities = [];
 
-    // ==========================================
-    // MEDIA DATA
-    // ==========================================
+    final media = json['media'];
 
     if (media is Map) {
-      title = media['title']?.toString();
+      final mediaMap = Map<String, dynamic>.from(
+        media,
+      );
 
-      thumbnail =
-          media['thumbnail']?.toString();
+      final titleValue = mediaMap['title'];
 
-      duration =
-          media['duration']?.toString();
+      if (titleValue != null) {
+        final value = titleValue.toString().trim();
 
-      // ========================================
-      // FORMATS
-      // ========================================
+        if (value.isNotEmpty) {
+          title = value;
+        }
+      }
 
-      final formats = media['formats'];
+      final thumbnailValue =
+      mediaMap['thumbnail'];
+
+      if (thumbnailValue != null) {
+        final value =
+        thumbnailValue.toString().trim();
+
+        if (value.isNotEmpty) {
+          thumbnail = value;
+        }
+      }
+
+      final durationValue =
+      mediaMap['duration'];
+
+      if (durationValue != null) {
+        final value =
+        durationValue.toString().trim();
+
+        if (value.isNotEmpty) {
+          duration = value;
+        }
+      }
+
+      final formats = mediaMap['formats'];
 
       if (formats is List) {
-        qualities = formats
-            .whereType<Map>()
-            .map(
-              (item) =>
+        for (final item in formats) {
+          if (item is Map) {
+            qualities.add(
               VideoQuality.fromJson(
                 Map<String, dynamic>.from(
                   item,
                 ),
               ),
-        )
-            .toList();
+            );
+          }
+        }
       }
     }
 
@@ -81,10 +103,6 @@ class VideoModel {
     );
   }
 }
-
-// ==========================================
-// VIDEO QUALITY
-// ==========================================
 
 class VideoQuality {
   final String format;
