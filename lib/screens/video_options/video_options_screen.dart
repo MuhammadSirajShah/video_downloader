@@ -85,9 +85,6 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
   //   };
   // }
 
-  String get _videoTitleFallback {
-    return '${widget.platform} Video';
-  }
 
   // ==========================================
   // AVAILABLE QUALITIES
@@ -340,7 +337,7 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            Colors.black.withOpacity(0.65),
+                            Colors.white.withValues(alpha: 0.3),
                           ],
                         ),
                       ),

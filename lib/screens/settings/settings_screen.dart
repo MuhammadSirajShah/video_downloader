@@ -105,7 +105,7 @@ class SettingsScreen extends StatelessWidget {
         height: 42,
         width: 42,
         decoration: BoxDecoration(
-          color: const Color(0xFF635BFF).withOpacity(0.12),
+          color: Colors.white.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Icon(
@@ -200,7 +200,7 @@ class SettingsScreen extends StatelessWidget {
                   height: 58,
                   width: 58,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF635BFF).withOpacity(0.15),
+                   color: Colors.white.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Icon(

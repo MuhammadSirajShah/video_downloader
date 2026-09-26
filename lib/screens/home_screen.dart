@@ -36,8 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // ==========================================
 
   void _detectUrl(String value) {
-    final platform =
-    UrlDetector.detectPlatform(value);
+    final platform = UrlDetector.detectPlatform(value);
 
     setState(() {
       _detectedPlatform = platform;
@@ -50,6 +49,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _pasteLink() async {
     final text = await FlutterClipboard.paste();
+
+    if (!mounted) return;
 
     if (text.trim().isEmpty) {
       _showMessage('Clipboard is empty.');
@@ -321,15 +322,29 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
 
+                    if (_urlController.text.isNotEmpty)
+                      IconButton(
+                        onPressed: () {
+                          _urlController.clear();
+
+                          setState(() {
+                            _detectedPlatform = null;
+                          });
+                        },
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: Colors.white54,
+                        ),
+                        tooltip: 'Clear',
+                      ),
+
                     TextButton.icon(
                       onPressed: _pasteLink,
                       icon: const Icon(
-                        Icons
-                            .content_paste_rounded,
+                        Icons.content_paste_rounded,
                         size: 18,
                       ),
-                      label:
-                      const Text('Paste'),
+                      label: const Text('Paste'),
                     ),
                   ],
                 ),
