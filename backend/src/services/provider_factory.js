@@ -1,4 +1,5 @@
 const MediaProvider = require('./media_provider');
+const DemoMediaProvider = require('./demo_media_provider');
 
 function getMediaProvider(platform) {
   const providerName =
@@ -7,6 +8,9 @@ function getMediaProvider(platform) {
       .trim();
 
   switch (providerName) {
+    case 'demo':
+      return new DemoMediaProvider();
+
     case 'none':
       return new MediaProvider();
 

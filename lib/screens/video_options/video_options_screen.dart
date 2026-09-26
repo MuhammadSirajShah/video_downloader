@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
@@ -12,34 +13,28 @@ class VideoOptionsScreen extends StatefulWidget {
   final String videoUrl;
   final VideoModel videoInfo;
 
-  const VideoOptionsScreen({
-    super.key,
+  const VideoOptionsScreen({super.key,
     required this.platform,
     required this.videoUrl,
     required this.videoInfo,
   });
 
   @override
-  State<VideoOptionsScreen> createState() =>
-      _VideoOptionsScreenState();
+  State<VideoOptionsScreen> createState() => _VideoOptionsScreenState();
 }
 
-class _VideoOptionsScreenState
-    extends State<VideoOptionsScreen> {
+class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
   final ApiService _apiService = ApiService();
-  final DownloaderService _downloaderService =
-  DownloaderService();
+
+  final DownloaderService _downloaderService = DownloaderService();
 
   bool _isDownloading = false;
-
   String _selectedFormat = 'MP4';
   String _selectedQuality = '720p';
-
   final List<String> _formats = [
     'MP4',
     'MP3',
   ];
-
   final List<String> _defaultQualities = [
     '360p',
     '480p',
@@ -47,21 +42,84 @@ class _VideoOptionsScreenState
     '1080p',
   ];
 
+  // ==========================================
+  // VIDEO TITLE
+  // ==========================================
+
+  String get _videoTitle {
+    if (widget.videoInfo.title != null &&
+        widget.videoInfo.title!.trim().isNotEmpty) {
+      return widget.videoInfo.title!;
+    }
+
+    return '${widget.platform} Video';
+  }
+
+  // ==========================================
+  // VIDEO DURATION
+  // ==========================================
+
+  String? get _videoDuration {
+    if (widget.videoInfo.duration != null &&
+        widget.videoInfo.duration!.trim().isNotEmpty) {
+      return widget.videoInfo.duration!;
+    }
+
+    return null;
+  }
+
+  // ==========================================
+  // MEDIA DATA
+  // ==========================================
+
+  Map<String, dynamic>? _getMedia() {
+    final formats =
+        widget.videoInfo.qualities;
+
+    if (formats.isEmpty) {
+      return null;
+    }
+
+    return {
+      'title': _videoTitleFallback,
+    };
+  }
+
+  String get _videoTitleFallback {
+    return '${widget.platform} Video';
+  }
+
+  // ==========================================
+  // AVAILABLE QUALITIES
+  // ==========================================
+
   List<String> get _availableQualities {
     if (widget.videoInfo.qualities.isEmpty) {
       return _defaultQualities;
     }
 
-    return widget.videoInfo.qualities
+    final qualities = widget.videoInfo.qualities
         .where(
           (item) =>
       item.format.toUpperCase() == 'MP4',
     )
         .map((item) => item.quality)
-        .where((quality) => quality.isNotEmpty)
+        .where(
+          (quality) => quality.isNotEmpty,
+    )
         .toSet()
         .toList();
+
+    if (qualities.isEmpty) {
+      return _defaultQualities;
+    }
+
+    return qualities;
   }
+
+  // ==========================================
+  // DOWNLOAD
+  // ==========================================
 
   Future<void> _download() async {
     if (_isDownloading) return;
@@ -131,14 +189,11 @@ class _VideoOptionsScreenState
     );
 
     try {
-      final extension =
-      _selectedFormat.toLowerCase();
+      final extension = _selectedFormat.toLowerCase();
 
-      final fileName =
-          '${widget.platform}_${DateTime.now().millisecondsSinceEpoch}.$extension';
+      final fileName = '${widget.platform}_${DateTime.now().millisecondsSinceEpoch}.$extension';
 
-      final filePath =
-      await _downloaderService.downloadFile(
+      final filePath = await _downloaderService.downloadFile(
         downloadUrl: downloadUrl.toString(),
         fileName: fileName,
         onProgress: (progress) {
@@ -150,18 +205,15 @@ class _VideoOptionsScreenState
       );
 
       await provider.updateFilePath(
-        id,
-        filePath,
+        id, filePath,
       );
 
       await provider.updateProgress(
-        id,
-        1.0,
+        id, 1.0,
       );
 
       await provider.updateStatus(
-        id,
-        'Completed',
+        id, 'Completed',
       );
 
       if (!mounted) return;
@@ -175,8 +227,7 @@ class _VideoOptionsScreenState
       );
     } catch (e) {
       await provider.updateStatus(
-        id,
-        'Failed',
+        id, 'Failed',
       );
 
       if (!mounted) return;
@@ -191,89 +242,177 @@ class _VideoOptionsScreenState
     }
   }
 
+  // ==========================================
+  // MESSAGE
+  // ==========================================
+
   void _showMessage(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           content: Text(message),
-          behavior: SnackBarBehavior.floating,
+          behavior:
+          SnackBarBehavior.floating,
         ),
       );
   }
+
+  // ==========================================
+  // BUILD
+  // ==========================================
 
   @override
   Widget build(BuildContext context) {
     final qualities = _availableQualities;
 
+    if (qualities.isNotEmpty && !qualities.contains(
+          _selectedQuality,
+        )) {
+      _selectedQuality = qualities.first;
+    }
+
     return Scaffold(
+      backgroundColor: const Color(0xFF0B1020),
       appBar: AppBar(
         title: const Text(
-          'Video Options',
-          style: TextStyle(
+          'Video Options', style: TextStyle(
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor:
-        const Color(0xFF0B1020),
+        backgroundColor: const Color(0xFF0B1020),
         foregroundColor: Colors.white,
+        elevation: 0,
       ),
+
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
-            crossAxisAlignment:
-            CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Preview
+
+              // ==================================
+              // VIDEO PREVIEW
+              // ==================================
+
               Container(
                 width: double.infinity,
                 height: 210,
                 decoration: BoxDecoration(
-                  color:
-                  const Color(0xFF151B2D),
-                  borderRadius:
-                  BorderRadius.circular(20),
+                  color: const Color(0xFF151B2D),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white10,
+                  ),
                 ),
+                clipBehavior: Clip.antiAlias,
                 child: Stack(
-                  alignment: Alignment.center,
+                  fit: StackFit.expand,
                   children: [
-                    const Icon(
-                      Icons.video_library_rounded,
-                      size: 70,
-                      color: Color(0xFF635BFF),
+                    if (widget.videoInfo.thumbnail != null &&
+                        widget.videoInfo.thumbnail!.trim().isNotEmpty)
+                      CachedNetworkImage(
+                        imageUrl: widget.videoInfo.thumbnail!,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) {
+                          return const Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFF635BFF),
+                            ),
+                          );
+                        },
+                        errorWidget: (context, url, error) {
+                          return const Center(
+                            child: Icon(
+                              Icons.video_library_rounded,
+                              size: 70,
+                              color: Color(0xFF635BFF),
+                            ),
+                          );
+                        },
+                      )
+                    else
+                      const Center(
+                        child: Icon(
+                          Icons.video_library_rounded,
+                          size: 70,
+                          color: Color(0xFF635BFF),
+                        ),
+                      ),
+
+                    // Dark overlay
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withOpacity(0.65),
+                          ],
+                        ),
+                      ),
                     ),
+
+                    // Platform
                     Positioned(
                       bottom: 14,
                       left: 14,
                       child: Container(
-                        padding:
-                        const EdgeInsets.symmetric(
+                        padding: const EdgeInsets.symmetric(
                           horizontal: 10,
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
                           color: Colors.black54,
-                          borderRadius:
-                          BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           widget.platform,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontWeight:
-                            FontWeight.w600,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
                     ),
+
+                    // Duration
+                    if (_videoDuration != null)
+                      Positioned(
+                        bottom: 14,
+                        right: 14,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(7),
+                          ),
+                          child: Text(
+                            _videoDuration!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
 
               const SizedBox(height: 20),
 
-              // Video information
+              // ==================================
+              // VIDEO INFORMATION
+              // ==================================
+
               const Text(
                 'Video',
                 style: TextStyle(
@@ -282,13 +421,17 @@ class _VideoOptionsScreenState
                 ),
               ),
 
-              const SizedBox(height: 5),
+              const SizedBox(height: 6),
 
               Text(
-                '${widget.platform} video',
+                _videoTitle,
+                maxLines: 2,
+                overflow:
+                TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 19,
-                  fontWeight: FontWeight.bold,
+                  fontWeight:
+                  FontWeight.bold,
                 ),
               ),
 
@@ -305,14 +448,44 @@ class _VideoOptionsScreenState
                 ),
               ),
 
-              const SizedBox(height: 25),
+              if (_videoDuration != null) ...[
+                const SizedBox(height: 10),
 
-              // Format
+                Row(
+                  children: [
+                    const Icon(
+                      Icons
+                          .access_time_rounded,
+                      size: 16,
+                      color:
+                      Colors.white54,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _videoDuration!,
+                      style:
+                      const TextStyle(
+                        color:
+                        Colors.white54,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+
+              const SizedBox(height: 28),
+
+              // ==================================
+              // FORMAT
+              // ==================================
+
               const Text(
                 'Format',
                 style: TextStyle(
                   fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  fontWeight:
+                  FontWeight.bold,
                 ),
               ),
 
@@ -326,7 +499,8 @@ class _VideoOptionsScreenState
                           format;
 
                   return Expanded(
-                    child: GestureDetector(
+                    child:
+                    GestureDetector(
                       onTap: () {
                         if (_isDownloading) {
                           return;
@@ -336,20 +510,24 @@ class _VideoOptionsScreenState
                           _selectedFormat =
                               format;
 
-                          if (format == 'MP4' &&
-                              qualities.isNotEmpty) {
-                            if (!qualities.contains(
-                              _selectedQuality,
-                            )) {
-                              _selectedQuality =
-                                  qualities.first;
-                            }
+                          if (format ==
+                              'MP4' &&
+                              qualities
+                                  .isNotEmpty &&
+                              !qualities
+                                  .contains(
+                                _selectedQuality,
+                              )) {
+                            _selectedQuality =
+                                qualities.first;
                           }
                         });
                       },
-                      child: Container(
+                      child:
+                      Container(
                         margin:
-                        const EdgeInsets.only(
+                        const EdgeInsets
+                            .only(
                           right: 10,
                         ),
                         padding:
@@ -367,10 +545,12 @@ class _VideoOptionsScreenState
                             0xFF151B2D,
                           ),
                           borderRadius:
-                          BorderRadius.circular(
+                          BorderRadius
+                              .circular(
                             14,
                           ),
-                          border: Border.all(
+                          border:
+                          Border.all(
                             color: selected
                                 ? const Color(
                               0xFF635BFF,
@@ -378,26 +558,32 @@ class _VideoOptionsScreenState
                                 : Colors.white10,
                           ),
                         ),
-                        child: Column(
+                        child:
+                        Column(
                           children: [
                             Icon(
-                              format == 'MP4'
+                              format ==
+                                  'MP4'
                                   ? Icons
                                   .video_file_rounded
                                   : Icons
                                   .audio_file_rounded,
-                              color: Colors.white,
+                              color:
+                              Colors.white,
                               size: 28,
                             ),
+
                             const SizedBox(
                               height: 7,
                             ),
+
                             Text(
                               format,
                               style:
                               const TextStyle(
                                 fontWeight:
-                                FontWeight.bold,
+                                FontWeight
+                                    .bold,
                               ),
                             ),
                           ],
@@ -408,8 +594,12 @@ class _VideoOptionsScreenState
                 }).toList(),
               ),
 
-              // Quality
-              if (_selectedFormat == 'MP4') ...[
+              // ==================================
+              // QUALITY
+              // ==================================
+
+              if (_selectedFormat ==
+                  'MP4') ...[
                 const SizedBox(height: 28),
 
                 const Text(
@@ -427,71 +617,82 @@ class _VideoOptionsScreenState
                   spacing: 10,
                   runSpacing: 10,
                   children:
-                  qualities.map((quality) {
-                    final selected =
-                        _selectedQuality ==
-                            quality;
-
-                    return GestureDetector(
-                      onTap: () {
-                        if (_isDownloading) {
-                          return;
-                        }
-
-                        setState(() {
-                          _selectedQuality =
+                  qualities.map(
+                        (quality) {
+                      final selected =
+                          _selectedQuality ==
                               quality;
-                        });
-                      },
-                      child: Container(
-                        padding:
-                        const EdgeInsets
-                            .symmetric(
-                          horizontal: 20,
-                          vertical: 12,
-                        ),
-                        decoration:
-                        BoxDecoration(
-                          color: selected
-                              ? const Color(
-                            0xFF635BFF,
-                          )
-                              : const Color(
-                            0xFF151B2D,
+
+                      return GestureDetector(
+                        onTap: () {
+                          if (_isDownloading) {
+                            return;
+                          }
+
+                          setState(() {
+                            _selectedQuality =
+                                quality;
+                          });
+                        },
+                        child:
+                        Container(
+                          padding:
+                          const EdgeInsets
+                              .symmetric(
+                            horizontal: 20,
+                            vertical: 12,
                           ),
-                          borderRadius:
-                          BorderRadius.circular(
-                            12,
-                          ),
-                          border: Border.all(
+                          decoration:
+                          BoxDecoration(
                             color: selected
                                 ? const Color(
                               0xFF635BFF,
                             )
-                                : Colors.white10,
+                                : const Color(
+                              0xFF151B2D,
+                            ),
+                            borderRadius:
+                            BorderRadius
+                                .circular(
+                              12,
+                            ),
+                            border:
+                            Border.all(
+                              color: selected
+                                  ? const Color(
+                                0xFF635BFF,
+                              )
+                                  : Colors.white10,
+                            ),
+                          ),
+                          child:
+                          Text(
+                            quality,
+                            style:
+                            const TextStyle(
+                              fontWeight:
+                              FontWeight
+                                  .w600,
+                            ),
                           ),
                         ),
-                        child: Text(
-                          quality,
-                          style:
-                          const TextStyle(
-                            fontWeight:
-                            FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                      );
+                    },
+                  ).toList(),
                 ),
               ],
 
               const SizedBox(height: 30),
 
-              // Download button
+              // ==================================
+              // DOWNLOAD BUTTON
+              // ==================================
+
               SizedBox(
                 width: double.infinity,
                 height: 56,
-                child: ElevatedButton.icon(
+                child:
+                ElevatedButton.icon(
                   onPressed:
                   _isDownloading
                       ? null
@@ -503,13 +704,11 @@ class _VideoOptionsScreenState
                     child:
                     CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Colors.white,
+                      color:
+                      Colors.white,
                     ),
                   )
-                      : const Icon(
-                    Icons
-                        .download_rounded,
-                  ),
+                      : const Icon(Icons.download_rounded,),
                   label: Text(
                     _isDownloading
                         ? 'Downloading...'
@@ -527,7 +726,9 @@ class _VideoOptionsScreenState
                   style:
                   ElevatedButton.styleFrom(
                     backgroundColor:
-                    const Color(0xFF635BFF),
+                    const Color(
+                      0xFF635BFF,
+                    ),
                     foregroundColor:
                     Colors.white,
                     shape:
@@ -545,7 +746,8 @@ class _VideoOptionsScreenState
 
               const Text(
                 'Available formats and qualities depend on the supported source and its permitted access.',
-                textAlign: TextAlign.center,
+                textAlign:
+                TextAlign.center,
                 style: TextStyle(
                   color: Colors.white38,
                   fontSize: 11,

@@ -1,11 +1,13 @@
 import 'package:clipboard/clipboard.dart';
 import 'package:flutter/material.dart';
+import 'package:video_downloader/screens/downloads/downloads_screen.dart';
+import 'package:video_downloader/screens/settings/settings_screen.dart';
 import 'package:video_downloader/screens/video_options/video_options_screen.dart';
 
-import '../../services/url_detector.dart';
 import '../../models/video_model.dart';
 import '../../services/api_service.dart';
-import 'downloads/downloads_screen.dart';
+import '../../services/url_detector.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,8 +17,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final TextEditingController _urlController =
+  TextEditingController();
 
-  final TextEditingController _urlController = TextEditingController();
   final ApiService _apiService = ApiService();
 
   String? _detectedPlatform;
@@ -28,13 +31,22 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  // ==========================================
+  // URL DETECTION
+  // ==========================================
+
   void _detectUrl(String value) {
-    final platform = UrlDetector.detectPlatform(value);
+    final platform =
+    UrlDetector.detectPlatform(value);
 
     setState(() {
       _detectedPlatform = platform;
     });
   }
+
+  // ==========================================
+  // PASTE LINK
+  // ==========================================
 
   Future<void> _pasteLink() async {
     final text = await FlutterClipboard.paste();
@@ -44,13 +56,21 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    _urlController.text = text.trim();
-    _detectUrl(text);
+    final cleanText = text.trim();
 
-    if (UrlDetector.detectPlatform(text) == null) {
-      _showMessage('Unsupported or invalid video link.');
+    _urlController.text = cleanText;
+    _detectUrl(cleanText);
+
+    if (UrlDetector.detectPlatform(cleanText) == null) {
+      _showMessage(
+        'Unsupported or invalid video link.',
+      );
     }
   }
+
+  // ==========================================
+  // DOWNLOAD BUTTON
+  // ==========================================
 
   Future<void> _downloadPressed() async {
     final url = _urlController.text.trim();
@@ -61,6 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       return;
     }
+
     if (_detectedPlatform == null) {
       _showMessage(
         'This platform is not supported.',
@@ -85,11 +106,12 @@ class _HomeScreenState extends State<HomeScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => VideoOptionsScreen(
-            platform: result.platform,
-            videoUrl: result.sourceUrl,
-            videoInfo: result,
-          ),
+          builder: (context) =>
+              VideoOptionsScreen(
+                platform: result.platform,
+                videoUrl: result.sourceUrl,
+                videoInfo: result,
+              ),
         ),
       );
     } else {
@@ -99,6 +121,10 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
   }
+
+  // ==========================================
+  // MESSAGE
+  // ==========================================
 
   void _showMessage(String message) {
     ScaffoldMessenger.of(context)
@@ -111,24 +137,70 @@ class _HomeScreenState extends State<HomeScreen> {
       );
   }
 
+  // ==========================================
+  // NAVIGATION
+  // ==========================================
+
+  void _openDownloads() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+        const DownloadsScreen(),
+      ),
+    );
+  }
+
+  void _openSettings() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+        const SettingsScreen(),
+      ),
+    );
+  }
+
+  // ==========================================
+  // BUILD
+  // ==========================================
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0B1020),
+
+      // ========================================
+      // BODY
+      // ========================================
+
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
+          padding: const EdgeInsets.fromLTRB(
+            20,
+            20,
+            20,
+            30,
+          ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment:
+            CrossAxisAlignment.start,
             children: [
-              // Header
+
+              // ==================================
+              // HEADER
+              // ==================================
+
               Row(
                 children: [
                   Container(
                     height: 48,
                     width: 48,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      gradient: const LinearGradient(
+                      borderRadius:
+                      BorderRadius.circular(14),
+                      gradient:
+                      const LinearGradient(
                         colors: [
                           Color(0xFF635BFF),
                           Color(0xFF8B5CF6),
@@ -141,13 +213,28 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: Colors.white,
                     ),
                   ),
+
                   const SizedBox(width: 12),
+
                   const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment:
+                    CrossAxisAlignment.start,
                     children: [
-                      Text('Video Downloader', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold,),),
+                      Text(
+                        'Video Downloader',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight:
+                          FontWeight.bold,
+                        ),
+                      ),
                       SizedBox(height: 3),
-                      Text('Download your favorite media', style: TextStyle(color: Colors.white60, fontSize: 12,),
+                      Text(
+                        'Download your favorite media',
+                        style: TextStyle(
+                          color: Colors.white60,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
@@ -155,6 +242,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
 
               const SizedBox(height: 35),
+
+              // ==================================
+              // TITLE
+              // ==================================
 
               const Text(
                 'Download Videos & Audio',
@@ -176,18 +267,26 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 24),
 
-              // URL Field
+              // ==================================
+              // URL FIELD
+              // ==================================
+
               Container(
-                padding: const EdgeInsets.symmetric(
+                padding:
+                const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 5,
                 ),
                 decoration: BoxDecoration(
                   color: const Color(0xFF151B2D),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius:
+                  BorderRadius.circular(16),
                   border: Border.all(
-                    color: _detectedPlatform != null
-                        ? const Color(0xFF635BFF)
+                    color:
+                    _detectedPlatform != null
+                        ? const Color(
+                      0xFF635BFF,
+                    )
                         : Colors.white10,
                   ),
                 ),
@@ -197,11 +296,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       Icons.link_rounded,
                       color: Color(0xFF8B7FFF),
                     ),
+
                     const SizedBox(width: 12),
 
                     Expanded(
                       child: TextField(
-                        controller: _urlController,
+                        controller:
+                        _urlController,
                         onChanged: _detectUrl,
                         keyboardType:
                         TextInputType.url,
@@ -209,11 +310,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         const InputDecoration(
                           hintText:
                           'Paste video link here...',
-                          hintStyle: TextStyle(
+                          hintStyle:
+                          TextStyle(
                             color: Colors.white38,
                             fontSize: 14,
                           ),
-                          border: InputBorder.none,
+                          border:
+                          InputBorder.none,
                         ),
                       ),
                     ),
@@ -221,10 +324,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     TextButton.icon(
                       onPressed: _pasteLink,
                       icon: const Icon(
-                        Icons.content_paste_rounded,
+                        Icons
+                            .content_paste_rounded,
                         size: 18,
                       ),
-                      label: const Text('Paste'),
+                      label:
+                      const Text('Paste'),
                     ),
                   ],
                 ),
@@ -232,66 +337,56 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 12),
 
-              // Detected Platform
+              // ==================================
+              // DETECTED PLATFORM
+              // ==================================
+
               if (_detectedPlatform != null)
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(14),
+                  padding:
+                  const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF151B2D),
+                    color:
+                    const Color(0xFF151B2D),
                     borderRadius:
                     BorderRadius.circular(14),
                     border: Border.all(
-                      color: Colors.green.withOpacity(0.3),
+                      color: Colors.green
+                          .withOpacity(0.3),
                     ),
                   ),
                   child: Row(
                     children: [
                       const Icon(
-                        Icons.check_circle_rounded,
-                        color: Colors.greenAccent,
+                        Icons
+                            .check_circle_rounded,
+                        color:
+                        Colors.greenAccent,
                       ),
+
                       const SizedBox(width: 10),
+
                       Text(
                         '$_detectedPlatform link detected',
-                        style: const TextStyle(
-                          color: Colors.greenAccent,
-                          fontWeight: FontWeight.w600,
+                        style:
+                        const TextStyle(
+                          color:
+                          Colors.greenAccent,
+                          fontWeight:
+                          FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
                 ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
 
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    final connected =
-                    await _apiService.checkServer();
+              // ==================================
+              // DOWNLOAD BUTTON
+              // ==================================
 
-                    if (!mounted) return;
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          connected
-                              ? 'Backend connected successfully '
-                              : 'Backend connection failed ',
-                        ),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.cloud_outlined),
-                  label: const Text('Test Backend Connection'),
-                ),
-              ),
-              SizedBox(height: 16,),
-              // Download Button
               SizedBox(
                 width: double.infinity,
                 height: 55,
@@ -303,26 +398,43 @@ class _HomeScreenState extends State<HomeScreen> {
                       ? const SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(
+                    child:
+                    CircularProgressIndicator(
                       strokeWidth: 2,
                       color: Colors.white,
                     ),
                   )
                       : const Icon(
-                    Icons.download_rounded,
+                    Icons
+                        .download_rounded,
                   ),
                   label: Text(
                     _isLoading
                         ? 'Checking...'
                         : 'Download',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight:
+                      FontWeight.bold,
+                    ),
                   ),
-                  style: ElevatedButton.styleFrom(
+                  style:
+                  ElevatedButton.styleFrom(
                     backgroundColor:
                     const Color(0xFF635BFF),
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(
+                    foregroundColor:
+                    Colors.white,
+                    minimumSize:
+                    const Size(
                       double.infinity,
                       56,
+                    ),
+                    shape:
+                    RoundedRectangleBorder(
+                      borderRadius:
+                      BorderRadius.circular(
+                        16,
+                      ),
                     ),
                   ),
                 ),
@@ -330,11 +442,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 35),
 
+              // ==================================
+              // SUPPORTED PLATFORMS
+              // ==================================
+
               const Text(
                 'Supported Platforms',
                 style: TextStyle(
                   fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  fontWeight:
+                  FontWeight.bold,
                 ),
               ),
 
@@ -354,22 +471,24 @@ class _HomeScreenState extends State<HomeScreen> {
                     name: 'Facebook',
                   ),
                   PlatformCard(
-                    icon: Icons.camera_alt_outlined,
+                    icon:
+                    Icons.camera_alt_outlined,
                     name: 'Instagram',
                   ),
                   PlatformCard(
-                    icon: Icons.music_note_rounded,
+                    icon:
+                    Icons.music_note_rounded,
                     name: 'TikTok',
                   ),
                   PlatformCard(
-                    icon:
-                    Icons.chat_bubble_outline_rounded,
+                    icon: Icons
+                        .chat_bubble_outline_rounded,
                     name: 'Snapchat',
                   ),
                   PlatformCard(
                     icon:
                     Icons.favorite_border_rounded,
-                    name: 'Like',
+                    name: 'Likee',
                   ),
                   PlatformCard(
                     icon:
@@ -381,21 +500,31 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 30),
 
+              // ==================================
+              // INFO
+              // ==================================
+
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(18),
+                padding:
+                const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF151B2D),
+                  color:
+                  const Color(0xFF151B2D),
                   borderRadius:
                   BorderRadius.circular(18),
                 ),
                 child: const Row(
                   children: [
                     Icon(
-                      Icons.info_outline_rounded,
-                      color: Color(0xFF8B7FFF),
+                      Icons
+                          .info_outline_rounded,
+                      color:
+                      Color(0xFF8B7FFF),
                     ),
+
                     SizedBox(width: 12),
+
                     Expanded(
                       child: Text(
                         'Only download content you have permission or rights to download.',
@@ -414,37 +543,50 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
 
-      bottomNavigationBar: NavigationBar(
-        backgroundColor: const Color(0xFF0F1526),
+      // ========================================
+      // BOTTOM NAVIGATION
+      // ========================================
+
+      bottomNavigationBar:
+      NavigationBar(
+        backgroundColor:
+        const Color(0xFF0F1526),
         selectedIndex: 0,
+
         onDestinationSelected: (index) {
           if (index == 1) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                const DownloadsScreen(),
-              ),
-            );
+            _openDownloads();
+          }
+
+          if (index == 2) {
+            _openSettings();
           }
         },
+
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.home_outlined),
+            icon:
+            Icon(Icons.home_outlined),
             selectedIcon:
             Icon(Icons.home_rounded),
             label: 'Home',
           ),
           NavigationDestination(
-            icon: Icon(Icons.download_outlined),
-            selectedIcon:
-            Icon(Icons.download_rounded),
+            icon: Icon(
+              Icons.download_outlined,
+            ),
+            selectedIcon: Icon(
+              Icons.download_rounded,
+            ),
             label: 'Downloads',
           ),
           NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon:
-            Icon(Icons.settings_rounded),
+            icon: Icon(
+              Icons.settings_outlined,
+            ),
+            selectedIcon: Icon(
+              Icons.settings_rounded,
+            ),
             label: 'Settings',
           ),
         ],
@@ -452,6 +594,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+
+// ==========================================
+// PLATFORM CARD
+// ==========================================
 
 class PlatformCard extends StatelessWidget {
   final IconData icon;
@@ -468,7 +614,8 @@ class PlatformCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF151B2D),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius:
+        BorderRadius.circular(16),
         border: Border.all(
           color: Colors.white10,
         ),
@@ -482,7 +629,9 @@ class PlatformCard extends StatelessWidget {
             size: 30,
             color: Colors.white,
           ),
+
           const SizedBox(height: 8),
+
           Text(
             name,
             style: const TextStyle(
