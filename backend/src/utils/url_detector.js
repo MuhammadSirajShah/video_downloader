@@ -1,42 +1,105 @@
 function detectPlatform(url) {
-  const value = url.toLowerCase().trim();
+  if (typeof url !== 'string') {
+    return null;
+  }
 
-  if (value.includes('tiktok.com')) {
+  const value = url.trim();
+
+  if (!value) {
+    return null;
+  }
+
+  let parsedUrl;
+
+  try {
+    parsedUrl = new URL(value);
+  } catch (error) {
+    return null;
+  }
+
+  if (
+    parsedUrl.protocol !== 'http:' &&
+    parsedUrl.protocol !== 'https:'
+  ) {
+    return null;
+  }
+
+  const host =
+    parsedUrl.hostname
+      .toLowerCase()
+      .replace(/^www\./, '');
+
+  if (_isTikTok(host)) {
     return 'TikTok';
   }
 
-  if (
-    value.includes('instagram.com')
-  ) {
+  if (_isInstagram(host)) {
     return 'Instagram';
   }
 
-  if (
-    value.includes('facebook.com') ||
-    value.includes('fb.watch')
-  ) {
+  if (_isFacebook(host)) {
     return 'Facebook';
   }
 
-  if (
-    value.includes('youtube.com') ||
-    value.includes('youtube')
-  ) {
+  if (_isYouTube(host)) {
     return 'YouTube';
   }
 
-  if (value.includes('snapchat.com')) {
+  if (_isSnapchat(host)) {
     return 'Snapchat';
   }
 
-  if (
-    value.includes('like.com') ||
-    value.includes('like.video')
-  ) {
+  if (_isLike(host)) {
     return 'Like';
   }
 
   return null;
+}
+
+function _isTikTok(host) {
+  return (
+    host === 'tiktok.com' ||
+    host.endsWith('.tiktok.com')
+  );
+}
+
+function _isInstagram(host) {
+  return (
+    host === 'instagram.com' ||
+    host.endsWith('.instagram.com')
+  );
+}
+
+function _isFacebook(host) {
+  return (
+    host === 'facebook.com' ||
+    host.endsWith('.facebook.com') ||
+    host === 'fb.watch'
+  );
+}
+
+function _isYouTube(host) {
+  return (
+    host === 'youtube.com' ||
+    host.endsWith('.youtube.com') ||
+    host === 'youtube'
+  );
+}
+
+function _isSnapchat(host) {
+  return (
+    host === 'snapchat.com' ||
+    host.endsWith('.snapchat.com')
+  );
+}
+
+function _isLike(host) {
+  return (
+    host === 'like.com' ||
+    host.endsWith('.like.com') ||
+    host === 'like.video' ||
+    host.endsWith('.like.video')
+  );
 }
 
 module.exports = {

@@ -2,6 +2,10 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
+const {
+  rateLimiter,
+} = require('./src/middleware/rate_limiter');
+
 const videoRoutes = require('./src/routes/video_routes');
 const {
   validateJsonBody,
@@ -13,7 +17,11 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(
+  express.json({
+    limit: '50kb',
+  }),
+);
 app.use(validateJsonBody);
 
 // Health check
@@ -25,7 +33,11 @@ app.get('/api/health', (req, res) => {
 });
 
 // Video routes
-app.use('/api/video', videoRoutes);
+app.use(
+  '/api/video',
+  rateLimiter,
+  videoRoutes,
+);
 
 // 404 handler
 app.use((req, res) => {
