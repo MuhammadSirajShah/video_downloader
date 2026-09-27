@@ -1,12 +1,12 @@
 import 'package:clipboard/clipboard.dart';
 import 'package:flutter/material.dart';
-import 'package:video_downloader/screens/downloads/downloads_screen.dart';
-import 'package:video_downloader/screens/settings/settings_screen.dart';
 import 'package:video_downloader/screens/video_options/video_options_screen.dart';
 
 import '../../models/video_model.dart';
 import '../../services/api_service.dart';
 import '../../services/url_detector.dart';
+import 'downloads/downloads_screen.dart';
+import 'settings/settings_screen.dart';
 
 
 class HomeScreen extends StatefulWidget {
@@ -17,115 +17,144 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final TextEditingController _urlController =
-  TextEditingController();
+  final TextEditingController _urlController = TextEditingController();
 
   final ApiService _apiService = ApiService();
-
-  String? _detectedPlatform;
   bool _isLoading = false;
+  String? _detectedPlatform;
+
+  final List<Map<String, dynamic>> _platforms = [
+    {
+      'name': 'TikTok',
+      'icon': Icons.music_note_rounded,
+    },
+    {
+      'name': 'Instagram',
+      'icon': Icons.camera_alt_rounded,
+    },
+    {
+      'name': 'Facebook',
+      'icon': Icons.facebook_rounded,
+    },
+    {
+      'name': 'YouTube',
+      'icon': Icons.play_arrow_rounded,
+    },
+    {
+      'name': 'Snapchat',
+      'icon': Icons.chat_bubble_rounded,
+    },
+    {
+      'name': 'Like',
+      'icon': Icons.favorite_rounded,
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _urlController.addListener(
+      _handleUrlChanged,
+    );
+  }
 
   @override
   void dispose() {
+    _urlController.removeListener(
+      _handleUrlChanged,
+    );
     _urlController.dispose();
     super.dispose();
   }
 
-  // ==========================================
-  // URL DETECTION
-  // ==========================================
-
-  void _detectUrl(String value) {
-    final platform = UrlDetector.detectPlatform(value);
-
+  void _handleUrlChanged() {
+    final platform =
+    UrlDetector.detectPlatform(
+      _urlController.text,
+    );
+    if (_detectedPlatform == platform) {
+      return;
+    }
     setState(() {
       _detectedPlatform = platform;
     });
   }
 
-  // ==========================================
-  // PASTE LINK
-  // ==========================================
-
-  Future<void> _pasteLink() async {
+  Future<void> _pasteUrl() async {
     final text = await FlutterClipboard.paste();
-
-    if (!mounted) return;
-
-    if (text.trim().isEmpty) {
-      _showMessage('Clipboard is empty.');
+    if (!mounted) {
       return;
     }
-
-    final cleanText = text.trim();
-
-    _urlController.text = cleanText;
-    _detectUrl(cleanText);
-
-    if (UrlDetector.detectPlatform(cleanText) == null) {
+    if (text.trim().isEmpty) {
       _showMessage(
-        'Unsupported or invalid video link.',
+        'Clipboard is empty.',
       );
+      return;
     }
+    _urlController.text = text.trim();
+    _urlController.selection = TextSelection.collapsed(
+          offset: _urlController.text.length,
+        );
   }
 
-  // ==========================================
-  // DOWNLOAD BUTTON
-  // ==========================================
+  void _clearUrl() {
+    _urlController.clear();
+    setState(() {
+      _detectedPlatform = null;
+    });
+  }
 
-  Future<void> _downloadPressed() async {
-    final url = _urlController.text.trim();
-
+  Future<void> _getVideoInfo() async {
+    if (_isLoading) {
+      return;
+    }
+    final url =
+    _urlController.text.trim();
     if (url.isEmpty) {
       _showMessage(
-        'Please paste a video link first.',
+        'Please paste a video URL first.',
       );
       return;
     }
-
-    if (_detectedPlatform == null) {
+    final platform = UrlDetector.detectPlatform(url);
+    if (platform == null) {
       _showMessage(
-        'This platform is not supported.',
+        'Unsupported platform or invalid URL.',
       );
       return;
     }
 
     setState(() {
       _isLoading = true;
+      _detectedPlatform = platform;
     });
 
-    final VideoModel result =
-    await _apiService.getVideoInfo(url);
+    final VideoModel videoInfo = await _apiService.getVideoInfo(url);
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       _isLoading = false;
     });
 
-    if (result.success) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) =>
-              VideoOptionsScreen(
-                platform: result.platform,
-                videoUrl: result.sourceUrl,
-                videoInfo: result,
-              ),
-        ),
-      );
-    } else {
+    if (!videoInfo.success) {
       _showMessage(
-        result.message ??
-            'Unable to process this video link.',
+        videoInfo.message ??
+            'Unable to get video information.',
       );
+      return;
     }
-  }
 
-  // ==========================================
-  // MESSAGE
-  // ==========================================
+    Navigator.push(context, MaterialPageRoute(builder: (_) => VideoOptionsScreen(
+              platform: platform,
+              videoUrl: url,
+              videoInfo: videoInfo,
+            ),
+      ),
+    );
+  }
 
   void _showMessage(String message) {
     ScaffoldMessenger.of(context)
@@ -133,527 +162,309 @@ class _HomeScreenState extends State<HomeScreen> {
       ..showSnackBar(
         SnackBar(
           content: Text(message),
-          behavior: SnackBarBehavior.floating,
+          behavior:
+          SnackBarBehavior.floating,
         ),
       );
   }
 
-  // ==========================================
-  // NAVIGATION
-  // ==========================================
+  Widget _buildPlatformCard(
+      Map<String, dynamic> platform,
+      ) {
+    final name = platform['name'] as String;
 
-  void _openDownloads() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-        const DownloadsScreen(),
+    final icon = platform['icon'] as IconData;
+
+    final isSelected = _detectedPlatform == name;
+
+    return Container(
+      width: 105,
+      padding:
+      const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
+      decoration: BoxDecoration(
+        color: isSelected
+            ? const Color(0xFF635BFF)
+            : const Color(0xFF151B2D),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isSelected
+              ? const Color(0xFF635BFF)
+              : Colors.white10,
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 28, color: Colors.white),
+          const SizedBox(height: 8),
+          Text(name, style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
-
-  void _openSettings() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-        const SettingsScreen(),
-      ),
-    );
-  }
-
-  // ==========================================
-  // BUILD
-  // ==========================================
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0B1020),
-
-      // ========================================
-      // BODY
-      // ========================================
-
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0B1020),
+        elevation: 0,
+        title: const Text('Video Downloader',style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const DownloadsScreen(),
+                ),
+              );
+            },
+            icon: const Icon(
+              Icons.download_rounded,
+            ),
+          ),
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const SettingsScreen(),
+                ),
+              );
+            },
+            icon: const Icon(
+              Icons.settings_rounded,
+            ),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-            20,
-            20,
-            20,
-            30,
-          ),
+          padding: const EdgeInsets.all(20),
           child: Column(
-            crossAxisAlignment:
-            CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const SizedBox(height: 10),
 
-              // ==================================
-              // HEADER
-              // ==================================
-
-              Row(
-                children: [
-                  Container(
-                    height: 48,
-                    width: 48,
-                    decoration: BoxDecoration(
-                      borderRadius:
-                      BorderRadius.circular(14),
-                      gradient:
-                      const LinearGradient(
-                        colors: [
-                          Color(0xFF635BFF),
-                          Color(0xFF8B5CF6),
-                        ],
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.download_rounded,
-                      size: 28,
-                      color: Colors.white,
-                    ),
-                  ),
-
-                  const SizedBox(width: 12),
-
-                  const Column(
-                    crossAxisAlignment:
-                    CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Video Downloader',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight:
-                          FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 3),
-                      Text(
-                        'Download your favorite media',
-                        style: TextStyle(
-                          color: Colors.white60,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 35),
-
-              // ==================================
-              // TITLE
-              // ==================================
-
-              const Text(
-                'Download Videos & Audio',
-                style: TextStyle(
-                  fontSize: 27,
+              const Text('Download your media',style: TextStyle(
+                  fontSize: 28,
                   fontWeight: FontWeight.bold,
                 ),
               ),
 
               const SizedBox(height: 8),
-
-              const Text(
-                'Paste a supported video link below to get started.',
-                style: TextStyle(
-                  color: Colors.white60,
+              const Text('Paste a supported video URL and choose your preferred format.',style: TextStyle(
+                  color: Colors.white54,
                   fontSize: 14,
+                  height: 1.5,
                 ),
               ),
 
-              const SizedBox(height: 24),
-
-              // ==================================
-              // URL FIELD
-              // ==================================
+              const SizedBox(height: 28),
 
               Container(
-                padding:
-                const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 5,
-                ),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: const Color(0xFF151B2D),
-                  borderRadius:
-                  BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color:
-                    _detectedPlatform != null
-                        ? const Color(
-                      0xFF635BFF,
-                    )
-                        : Colors.white10,
+                    color: Colors.white10,
                   ),
                 ),
-                child: Row(
+                child: Column(
                   children: [
-                    const Icon(
-                      Icons.link_rounded,
-                      color: Color(0xFF8B7FFF),
-                    ),
-
-                    const SizedBox(width: 12),
-
-                    Expanded(
-                      child: TextField(
-                        controller:
-                        _urlController,
-                        onChanged: _detectUrl,
-                        keyboardType:
-                        TextInputType.url,
-                        decoration:
-                        const InputDecoration(
-                          hintText:
-                          'Paste video link here...',
-                          hintStyle:
-                          TextStyle(
-                            color: Colors.white38,
-                            fontSize: 14,
+                    TextField(
+                      controller: _urlController,
+                      keyboardType: TextInputType.url,
+                      maxLines: 3,
+                      minLines: 1,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Paste video link here...',
+                        hintStyle: const TextStyle(
+                          color: Colors.white38,
+                        ),
+                        border: InputBorder.none,
+                        prefixIcon: const Icon(Icons.link_rounded,
+                          color: Color(0xFF635BFF),
+                        ),
+                        suffixIcon: _urlController.text.isNotEmpty
+                            ? IconButton(
+                          onPressed: _clearUrl,
+                          icon: const Icon(Icons.close_rounded,
+                            color: Colors.white54,
                           ),
-                          border:
-                          InputBorder.none,
-                        ),
+                        ) : null,
                       ),
                     ),
 
-                    if (_urlController.text.isNotEmpty)
-                      IconButton(
-                        onPressed: () {
-                          _urlController.clear();
+                    const SizedBox(height: 12),
 
-                          setState(() {
-                            _detectedPlatform = null;
-                          });
-                        },
-                        icon: const Icon(
-                          Icons.close_rounded,
-                          color: Colors.white54,
+                    Row(
+                      children: [
+                        Expanded(
+                          child:
+                          OutlinedButton.icon(
+                            onPressed: _pasteUrl,
+                            icon: const Icon(Icons.content_paste_rounded,
+                              size: 18,
+                            ),
+                            label: const Text('Paste'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: const BorderSide(
+                                color: Colors.white24,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
                         ),
-                        tooltip: 'Clear',
-                      ),
 
-                    TextButton.icon(
-                      onPressed: _pasteLink,
-                      icon: const Icon(
-                        Icons.content_paste_rounded,
-                        size: 18,
-                      ),
-                      label: const Text('Paste'),
+                        const SizedBox(width: 10),
+
+                        Expanded(
+                          child:
+                          ElevatedButton.icon(
+                            onPressed: _isLoading
+                                ? null
+                                : _getVideoInfo,
+                            icon: _isLoading
+                                ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                                : const Icon(Icons.arrow_forward_rounded,size: 18),
+                            label: Text(_isLoading
+                                  ? 'Checking...'
+                                  : 'Continue',
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF635BFF),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 12),
+              if (_detectedPlatform != null) ...[
+                const SizedBox(height: 18),
 
-              // ==================================
-              // DETECTED PLATFORM
-              // ==================================
-
-              if (_detectedPlatform != null)
                 Container(
                   width: double.infinity,
-                  padding:
-                  const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color:
-                    const Color(0xFF151B2D),
-                    borderRadius:
-                    BorderRadius.circular(14),
+                    color: const Color(0xFF151B2D),
+                    borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: Colors.green.withValues(alpha: 0.3)
+                      color: const Color(0xFF635BFF).withValues(alpha: 0.35),
                     ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(
-                        Icons
-                            .check_circle_rounded,
-                        color:
-                        Colors.greenAccent,
-                      ),
-
+                      const Icon(Icons.check_circle_rounded,color: Color(0xFF635BFF),),
                       const SizedBox(width: 10),
-
-                      Text(
-                        '$_detectedPlatform link detected',
-                        style:
-                        const TextStyle(
-                          color:
-                          Colors.greenAccent,
-                          fontWeight:
-                          FontWeight.w600,
+                      Expanded(
+                        child: Text('Detected: $_detectedPlatform', style: const TextStyle(
+                            fontWeight:
+                            FontWeight.w600,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
+              ],
 
-              const SizedBox(height: 18),
+              const SizedBox(height: 34),
 
-              // ==================================
-              // DOWNLOAD BUTTON
-              // ==================================
+              const Text('Supported Platforms', style: TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 14),
 
               SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton.icon(
-                  onPressed: _isLoading
-                      ? null
-                      : _downloadPressed,
-                  icon: _isLoading
-                      ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child:
-                    CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                      : const Icon(
-                    Icons
-                        .download_rounded,
-                  ),
-                  label: Text(
-                    _isLoading
-                        ? 'Checking...'
-                        : 'Download',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight:
-                      FontWeight.bold,
-                    ),
-                  ),
-                  style:
-                  ElevatedButton.styleFrom(
-                    backgroundColor:
-                    const Color(0xFF635BFF),
-                    foregroundColor:
-                    Colors.white,
-                    minimumSize:
-                    const Size(
-                      double.infinity,
-                      56,
-                    ),
-                    shape:
-                    RoundedRectangleBorder(
-                      borderRadius:
-                      BorderRadius.circular(
-                        16,
-                      ),
-                    ),
-                  ),
+                height: 105,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _platforms.length,
+                  separatorBuilder: (_, _) =>
+                  const SizedBox(width: 10),
+                  itemBuilder: (context, index) {
+                    return _buildPlatformCard(
+                      _platforms[index],
+                    );
+                  },
                 ),
-              ),
-
-              const SizedBox(height: 35),
-
-              // ==================================
-              // SUPPORTED PLATFORMS
-              // ==================================
-
-              const Text(
-                'Supported Platforms',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight:
-                  FontWeight.bold,
-                ),
-              ),
-
-              const SizedBox(height: 15),
-
-              GridView.count(
-                crossAxisCount: 3,
-                shrinkWrap: true,
-                physics:
-                const NeverScrollableScrollPhysics(),
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 1.15,
-                children: const [
-                  PlatformCard(
-                    icon: Icons.facebook,
-                    name: 'Facebook',
-                  ),
-                  PlatformCard(
-                    icon:
-                    Icons.camera_alt_outlined,
-                    name: 'Instagram',
-                  ),
-                  PlatformCard(
-                    icon:
-                    Icons.music_note_rounded,
-                    name: 'TikTok',
-                  ),
-                  PlatformCard(
-                    icon: Icons
-                        .chat_bubble_outline_rounded,
-                    name: 'Snapchat',
-                  ),
-                  PlatformCard(
-                    icon:
-                    Icons.favorite_border_rounded,
-                    name: 'Likee',
-                  ),
-                  PlatformCard(
-                    icon:
-                    Icons.play_circle_outline_rounded,
-                    name: 'YouTube',
-                  ),
-                ],
               ),
 
               const SizedBox(height: 30),
 
-              // ==================================
-              // INFO
-              // ==================================
-
               Container(
                 width: double.infinity,
-                padding:
-                const EdgeInsets.all(18),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color:
-                  const Color(0xFF151B2D),
-                  borderRadius:
-                  BorderRadius.circular(18),
+                  color: const Color(0xFF151B2D),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: const Row(
+                  crossAxisAlignment:CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      Icons
-                          .info_outline_rounded,
-                      color:
-                      Color(0xFF8B7FFF),
+                    Icon(Icons.info_outline_rounded,color: Color(0xFF635BFF),
                     ),
-
                     SizedBox(width: 12),
-
                     Expanded(
-                      child: Text(
-                        'Only download content you have permission or rights to download.',
+                      child: Text('Only download content you have permission to download. Availability depends on the supported source and its permitted access.',
                         style: TextStyle(
-                          color: Colors.white60,
+                          color:
+                          Colors.white54,
                           fontSize: 12,
-                          height: 1.4,
+                          height: 1.5,
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
+
+              const SizedBox(height: 30),
+
+              const Center(
+                child: Text('Video Downloader • Version 1.0.0',style: TextStyle(
+                    color: Colors.white24,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
-      ),
-
-      // ========================================
-      // BOTTOM NAVIGATION
-      // ========================================
-
-      bottomNavigationBar:
-      NavigationBar(
-        backgroundColor:
-        const Color(0xFF0F1526),
-        selectedIndex: 0,
-
-        onDestinationSelected: (index) {
-          if (index == 1) {
-            _openDownloads();
-          }
-
-          if (index == 2) {
-            _openSettings();
-          }
-        },
-
-        destinations: const [
-          NavigationDestination(
-            icon:
-            Icon(Icons.home_outlined),
-            selectedIcon:
-            Icon(Icons.home_rounded),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(
-              Icons.download_outlined,
-            ),
-            selectedIcon: Icon(
-              Icons.download_rounded,
-            ),
-            label: 'Downloads',
-          ),
-          NavigationDestination(
-            icon: Icon(
-              Icons.settings_outlined,
-            ),
-            selectedIcon: Icon(
-              Icons.settings_rounded,
-            ),
-            label: 'Settings',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ==========================================
-// PLATFORM CARD
-// ==========================================
-
-class PlatformCard extends StatelessWidget {
-  final IconData icon;
-  final String name;
-
-  const PlatformCard({
-    super.key,
-    required this.icon,
-    required this.name,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF151B2D),
-        borderRadius:
-        BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white10,
-        ),
-      ),
-      child: Column(
-        mainAxisAlignment:
-        MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            size: 30,
-            color: Colors.white,
-          ),
-
-          const SizedBox(height: 8),
-
-          Text(
-            name,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.white70,
-            ),
-          ),
-        ],
       ),
     );
   }
