@@ -13,28 +13,36 @@ class VideoOptionsScreen extends StatefulWidget {
   final String videoUrl;
   final VideoModel videoInfo;
 
-  const VideoOptionsScreen({super.key,
+  const VideoOptionsScreen({
+    super.key,
     required this.platform,
     required this.videoUrl,
     required this.videoInfo,
   });
 
   @override
-  State<VideoOptionsScreen> createState() => _VideoOptionsScreenState();
+  State<VideoOptionsScreen> createState() =>
+      _VideoOptionsScreenState();
 }
 
-class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
+class _VideoOptionsScreenState
+    extends State<VideoOptionsScreen> {
   final ApiService _apiService = ApiService();
 
-  final DownloaderService _downloaderService = DownloaderService();
+  final DownloaderService _downloaderService =
+  DownloaderService();
 
   bool _isDownloading = false;
+
   String _selectedFormat = 'MP4';
+
   String _selectedQuality = '720p';
+
   final List<String> _formats = [
     'MP4',
     'MP3',
   ];
+
   final List<String> _defaultQualities = [
     '360p',
     '480p',
@@ -69,24 +77,6 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
   }
 
   // ==========================================
-  // MEDIA DATA
-  // ==========================================
-
-  // Map<String, dynamic>? _getMedia() {
-  //   final formats =
-  //       widget.videoInfo.qualities;
-  //
-  //   if (formats.isEmpty) {
-  //     return null;
-  //   }
-  //
-  //   return {
-  //     'title': _videoTitleFallback,
-  //   };
-  // }
-
-
-  // ==========================================
   // AVAILABLE QUALITIES
   // ==========================================
 
@@ -100,7 +90,9 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
           (item) =>
       item.format.toUpperCase() == 'MP4',
     )
-        .map((item) => item.quality)
+        .map(
+          (item) => item.quality,
+    )
         .where(
           (quality) => quality.isNotEmpty,
     )
@@ -115,24 +107,58 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
   }
 
   // ==========================================
+  // FILE NAME
+  // ==========================================
+
+  String _buildFileName({
+    required String platform,
+    required String format,
+    required String? quality,
+  }) {
+    final safePlatform = platform
+        .replaceAll(
+      RegExp(r'[^a-zA-Z0-9]+'),
+      '_',
+    )
+        .toLowerCase();
+
+    final extension = format.toLowerCase();
+
+    if (quality != null &&
+        quality.trim().isNotEmpty &&
+        format.toUpperCase() == 'MP4') {
+      return '${safePlatform}_${quality.trim()}.$extension';
+    }
+
+    return '${safePlatform}_audio.$extension';
+  }
+
+  // ==========================================
   // DOWNLOAD
   // ==========================================
 
   Future<void> _download() async {
-    if (_isDownloading) return;
+    if (_isDownloading) {
+      return;
+    }
 
     setState(() {
       _isDownloading = true;
     });
 
-    final result = await _apiService.createDownloadJob(
+    final result =
+    await _apiService.createDownloadJob(
       url: widget.videoUrl,
       format: _selectedFormat,
       quality: _selectedFormat == 'MP4'
           ? _selectedQuality
           : null,
     );
-    if (!mounted) return;
+
+    if (!mounted) {
+      return;
+    }
+
     if (result['success'] != true) {
       setState(() {
         _isDownloading = false;
@@ -148,10 +174,12 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
 
     final downloadUrl = result['downloadUrl'];
 
-    if (downloadUrl == null || downloadUrl.toString().isEmpty) {
+    if (downloadUrl == null ||
+        downloadUrl.toString().trim().isEmpty) {
       setState(() {
         _isDownloading = false;
       });
+
       _showMessage(
         'No downloadable file was returned by the server.',
       );
@@ -160,7 +188,10 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
     }
 
     final id = const Uuid().v4();
-    final provider = context.read<DownloaderProvider>();
+
+    final provider =
+    context.read<DownloaderProvider>();
+
     await provider.addDownload(
       id: id,
       platform: widget.platform,
@@ -172,15 +203,21 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
     );
 
     await provider.updateStatus(
-      id, 'Downloading',
+      id,
+      'Downloading',
     );
 
     try {
-      final extension = _selectedFormat.toLowerCase();
+      final fileName = _buildFileName(
+        platform: widget.platform,
+        format: _selectedFormat,
+        quality: _selectedFormat == 'MP4'
+            ? _selectedQuality
+            : null,
+      );
 
-      final fileName = '${widget.platform}_${DateTime.now().millisecondsSinceEpoch}.$extension';
-
-      final filePath = await _downloaderService.downloadFile(
+      final filePath =
+      await _downloaderService.downloadFile(
         downloadUrl: downloadUrl.toString(),
         fileName: fileName,
         onProgress: (progress) {
@@ -192,18 +229,23 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
       );
 
       await provider.updateFilePath(
-        id, filePath,
+        id,
+        filePath,
       );
 
       await provider.updateProgress(
-        id, 1.0,
+        id,
+        1.0,
       );
 
       await provider.updateStatus(
-        id, 'Completed',
+        id,
+        'Completed',
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _isDownloading = false;
@@ -214,10 +256,13 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
       );
     } catch (e) {
       await provider.updateStatus(
-        id, 'Failed',
+        id,
+        'Failed',
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _isDownloading = false;
@@ -253,32 +298,36 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
   Widget build(BuildContext context) {
     final qualities = _availableQualities;
 
-    if (qualities.isNotEmpty && !qualities.contains(
+    if (qualities.isNotEmpty &&
+        !qualities.contains(
           _selectedQuality,
         )) {
       _selectedQuality = qualities.first;
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0B1020),
+      backgroundColor:
+      const Color(0xFF0B1020),
       appBar: AppBar(
         title: const Text(
-          'Video Options', style: TextStyle(
+          'Video Options',
+          style: TextStyle(
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: const Color(0xFF0B1020),
+        backgroundColor:
+        const Color(0xFF0B1020),
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding:
+          const EdgeInsets.all(20),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment:
+            CrossAxisAlignment.start,
             children: [
-
               // ==================================
               // VIDEO PREVIEW
               // ==================================
@@ -287,35 +336,54 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
                 width: double.infinity,
                 height: 210,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF151B2D),
-                  borderRadius: BorderRadius.circular(20),
+                  color:
+                  const Color(0xFF151B2D),
+                  borderRadius:
+                  BorderRadius.circular(20),
                   border: Border.all(
                     color: Colors.white10,
                   ),
                 ),
-                clipBehavior: Clip.antiAlias,
+                clipBehavior:
+                Clip.antiAlias,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    if (widget.videoInfo.thumbnail != null &&
-                        widget.videoInfo.thumbnail!.trim().isNotEmpty)
+                    if (widget.videoInfo
+                        .thumbnail !=
+                        null &&
+                        widget.videoInfo.thumbnail!
+                            .trim()
+                            .isNotEmpty)
                       CachedNetworkImage(
-                        imageUrl: widget.videoInfo.thumbnail!,
+                        imageUrl:
+                        widget.videoInfo
+                            .thumbnail!,
                         fit: BoxFit.cover,
-                        placeholder: (context, url) {
+                        placeholder:
+                            (context, url) {
                           return const Center(
-                            child: CircularProgressIndicator(
+                            child:
+                            CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Color(0xFF635BFF),
+                              color:
+                              Color(
+                                0xFF635BFF,
+                              ),
                             ),
                           );
                         },
-                        errorWidget: (context, url, error) {
+                        errorWidget:
+                            (context, url, error) {
                           return const Center(
                             child: Icon(
-                              Icons.video_library_rounded,
+                              Icons
+                                  .video_library_rounded,
                               size: 70,
-                              color: Color(0xFF635BFF),
+                              color:
+                              Color(
+                                0xFF635BFF,
+                              ),
                             ),
                           );
                         },
@@ -323,69 +391,97 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
                     else
                       const Center(
                         child: Icon(
-                          Icons.video_library_rounded,
+                          Icons
+                              .video_library_rounded,
                           size: 70,
-                          color: Color(0xFF635BFF),
+                          color:
+                          Color(0xFF635BFF),
                         ),
                       ),
 
-                    // Dark overlay
                     Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
+                      decoration:
+                      BoxDecoration(
+                        gradient:
+                        LinearGradient(
+                          begin: Alignment
+                              .topCenter,
+                          end: Alignment
+                              .bottomCenter,
                           colors: [
                             Colors.transparent,
-                            Colors.white.withValues(alpha: 0.3),
+                            Colors.white
+                                .withValues(
+                              alpha: 0.3,
+                            ),
                           ],
                         ),
                       ),
                     ),
 
-                    // Platform
                     Positioned(
                       bottom: 14,
                       left: 14,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
+                        padding:
+                        const EdgeInsets
+                            .symmetric(
                           horizontal: 10,
                           vertical: 6,
                         ),
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          borderRadius: BorderRadius.circular(8),
+                        decoration:
+                        BoxDecoration(
+                          color:
+                          Colors.black54,
+                          borderRadius:
+                          BorderRadius.circular(
+                            8,
+                          ),
                         ),
                         child: Text(
                           widget.platform,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
+                          style:
+                          const TextStyle(
+                            color:
+                            Colors.white,
+                            fontWeight:
+                            FontWeight.w600,
                           ),
                         ),
                       ),
                     ),
 
-                    // Duration
-                    if (_videoDuration != null)
+                    if (_videoDuration !=
+                        null)
                       Positioned(
                         bottom: 14,
                         right: 14,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(
+                          padding:
+                          const EdgeInsets
+                              .symmetric(
                             horizontal: 9,
                             vertical: 5,
                           ),
-                          decoration: BoxDecoration(
-                            color: Colors.black54,
-                            borderRadius: BorderRadius.circular(7),
+                          decoration:
+                          BoxDecoration(
+                            color:
+                            Colors.black54,
+                            borderRadius:
+                            BorderRadius
+                                .circular(
+                              7,
+                            ),
                           ),
                           child: Text(
                             _videoDuration!,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style:
+                            const TextStyle(
+                              color:
+                              Colors.white,
                               fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                              fontWeight:
+                              FontWeight.w600,
                             ),
                           ),
                         ),
@@ -437,15 +533,13 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
 
               if (_videoDuration != null) ...[
                 const SizedBox(height: 10),
-
                 Row(
                   children: [
                     const Icon(
                       Icons
                           .access_time_rounded,
                       size: 16,
-                      color:
-                      Colors.white54,
+                      color: Colors.white54,
                     ),
                     const SizedBox(width: 6),
                     Text(
@@ -510,8 +604,7 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
                           }
                         });
                       },
-                      child:
-                      Container(
+                      child: Container(
                         margin:
                         const EdgeInsets
                             .only(
@@ -545,12 +638,10 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
                                 : Colors.white10,
                           ),
                         ),
-                        child:
-                        Column(
+                        child: Column(
                           children: [
                             Icon(
-                              format ==
-                                  'MP4'
+                              format == 'MP4'
                                   ? Icons
                                   .video_file_rounded
                                   : Icons
@@ -559,11 +650,9 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
                               Colors.white,
                               size: 28,
                             ),
-
                             const SizedBox(
                               height: 7,
                             ),
-
                             Text(
                               format,
                               style:
@@ -621,8 +710,7 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
                                 quality;
                           });
                         },
-                        child:
-                        Container(
+                        child: Container(
                           padding:
                           const EdgeInsets
                               .symmetric(
@@ -652,14 +740,12 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
                                   : Colors.white10,
                             ),
                           ),
-                          child:
-                          Text(
+                          child: Text(
                             quality,
                             style:
                             const TextStyle(
                               fontWeight:
-                              FontWeight
-                                  .w600,
+                              FontWeight.w600,
                             ),
                           ),
                         ),
@@ -695,7 +781,10 @@ class _VideoOptionsScreenState extends State<VideoOptionsScreen> {
                       Colors.white,
                     ),
                   )
-                      : const Icon(Icons.download_rounded,),
+                      : const Icon(
+                    Icons
+                        .download_rounded,
+                  ),
                   label: Text(
                     _isDownloading
                         ? 'Downloading...'

@@ -19,27 +19,32 @@ const ALLOWED_QUALITIES = [
   '1080p',
 ];
 
+function getCleanUrl(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const url = value.trim();
+
+  if (!url) {
+    return null;
+  }
+
+  return url;
+}
+
 async function getVideoInfo(req, res) {
   try {
-    const { url } = req.body;
+    const url = getCleanUrl(req.body?.url);
 
-    if (!url || typeof url !== 'string') {
+    if (!url) {
       return res.status(400).json({
         success: false,
         message: 'Video URL is required.',
       });
     }
 
-    const cleanUrl = url.trim();
-
-    if (!cleanUrl) {
-      return res.status(400).json({
-        success: false,
-        message: 'Video URL cannot be empty.',
-      });
-    }
-
-    const platform = detectPlatform(cleanUrl);
+    const platform = detectPlatform(url);
 
     if (!platform) {
       return res.status(400).json({
@@ -51,13 +56,16 @@ async function getVideoInfo(req, res) {
 
     const result =
       await getVideoInfoFromService(
-        cleanUrl,
+        url,
         platform,
       );
 
-    return res.json(result);
+    return res.status(200).json(result);
   } catch (error) {
-    console.error(error);
+    console.error(
+      'Video info controller error:',
+      error,
+    );
 
     return res.status(500).json({
       success: false,
@@ -68,38 +76,23 @@ async function getVideoInfo(req, res) {
 
 async function downloadVideo(req, res) {
   try {
-    const {
-      url,
-      format,
-      quality,
-    } = req.body;
+    const url = getCleanUrl(req.body?.url);
 
-    if (!url || typeof url !== 'string') {
+    if (!url) {
       return res.status(400).json({
         success: false,
         message: 'Video URL is required.',
       });
     }
 
-    const cleanUrl = url.trim();
-
-    if (!cleanUrl) {
-      return res.status(400).json({
-        success: false,
-        message: 'Video URL cannot be empty.',
-      });
-    }
-
-    const normalizedFormat =
-      typeof format === 'string'
-        ? format.trim().toUpperCase()
+    const format =
+      typeof req.body?.format === 'string'
+        ? req.body.format
+            .trim()
+            .toUpperCase()
         : '';
 
-    if (
-      !ALLOWED_FORMATS.includes(
-        normalizedFormat,
-      )
-    ) {
+    if (!ALLOWED_FORMATS.includes(format)) {
       return res.status(400).json({
         success: false,
         message:
@@ -107,17 +100,19 @@ async function downloadVideo(req, res) {
       });
     }
 
-    let normalizedQuality = null;
+    let quality = null;
 
-    if (normalizedFormat === 'MP4') {
-      normalizedQuality =
-        typeof quality === 'string'
-          ? quality.trim().toLowerCase()
+    if (format === 'MP4') {
+      quality =
+        typeof req.body?.quality === 'string'
+          ? req.body.quality
+              .trim()
+              .toLowerCase()
           : '';
 
       if (
         !ALLOWED_QUALITIES.includes(
-          normalizedQuality,
+          quality,
         )
       ) {
         return res.status(400).json({
@@ -128,8 +123,7 @@ async function downloadVideo(req, res) {
       }
     }
 
-    const platform =
-      detectPlatform(cleanUrl);
+    const platform = detectPlatform(url);
 
     if (!platform) {
       return res.status(400).json({
@@ -141,15 +135,18 @@ async function downloadVideo(req, res) {
 
     const result =
       await createDownloadJob({
-        url: cleanUrl,
+        url,
         platform,
-        format: normalizedFormat,
-        quality: normalizedQuality,
+        format,
+        quality,
       });
 
-    return res.json(result);
+    return res.status(200).json(result);
   } catch (error) {
-    console.error(error);
+    console.error(
+      'Video download controller error:',
+      error,
+    );
 
     return res.status(500).json({
       success: false,
