@@ -40,6 +40,9 @@ async function getVideoInfo(req, res) {
     if (!url) {
       return res.status(400).json({
         success: false,
+        platform: null,
+        sourceUrl: null,
+        media: null,
         message: 'Video URL is required.',
       });
     }
@@ -49,6 +52,9 @@ async function getVideoInfo(req, res) {
     if (!platform) {
       return res.status(400).json({
         success: false,
+        platform: null,
+        sourceUrl: url,
+        media: null,
         message:
           'Unsupported platform or invalid URL.',
       });
@@ -60,7 +66,20 @@ async function getVideoInfo(req, res) {
         platform,
       );
 
-    return res.status(200).json(result);
+    if (!result || typeof result !== 'object') {
+      return res.status(502).json({
+        success: false,
+        platform,
+        sourceUrl: url,
+        media: null,
+        message:
+          'Invalid response from media provider.',
+      });
+    }
+
+    return res.status(
+      result.success ? 200 : 502,
+    ).json(result);
   } catch (error) {
     console.error(
       'Video info controller error:',
@@ -69,7 +88,11 @@ async function getVideoInfo(req, res) {
 
     return res.status(500).json({
       success: false,
-      message: 'Internal server error.',
+      platform: null,
+      sourceUrl: null,
+      media: null,
+      message:
+        'Unable to process the video request.',
     });
   }
 }
@@ -81,6 +104,11 @@ async function downloadVideo(req, res) {
     if (!url) {
       return res.status(400).json({
         success: false,
+        platform: null,
+        sourceUrl: null,
+        format: null,
+        quality: null,
+        downloadUrl: null,
         message: 'Video URL is required.',
       });
     }
@@ -95,6 +123,11 @@ async function downloadVideo(req, res) {
     if (!ALLOWED_FORMATS.includes(format)) {
       return res.status(400).json({
         success: false,
+        platform: null,
+        sourceUrl: url,
+        format: format || null,
+        quality: null,
+        downloadUrl: null,
         message:
           'Invalid format. Use MP4 or MP3.',
       });
@@ -117,6 +150,11 @@ async function downloadVideo(req, res) {
       ) {
         return res.status(400).json({
           success: false,
+          platform: null,
+          sourceUrl: url,
+          format,
+          quality: quality || null,
+          downloadUrl: null,
           message:
             'Invalid video quality.',
         });
@@ -128,6 +166,11 @@ async function downloadVideo(req, res) {
     if (!platform) {
       return res.status(400).json({
         success: false,
+        platform: null,
+        sourceUrl: url,
+        format,
+        quality,
+        downloadUrl: null,
         message:
           'Unsupported platform or invalid URL.',
       });
@@ -141,7 +184,23 @@ async function downloadVideo(req, res) {
         quality,
       });
 
-    return res.status(200).json(result);
+    if (!result ||
+        typeof result !== 'object') {
+      return res.status(502).json({
+        success: false,
+        platform,
+        sourceUrl: url,
+        format,
+        quality,
+        downloadUrl: null,
+        message:
+          'Invalid response from media provider.',
+      });
+    }
+
+    return res.status(
+      result.success ? 200 : 502,
+    ).json(result);
   } catch (error) {
     console.error(
       'Video download controller error:',
@@ -150,7 +209,13 @@ async function downloadVideo(req, res) {
 
     return res.status(500).json({
       success: false,
-      message: 'Internal server error.',
+      platform: null,
+      sourceUrl: null,
+      format: null,
+      quality: null,
+      downloadUrl: null,
+      message:
+        'Unable to create the download request.',
     });
   }
 }
